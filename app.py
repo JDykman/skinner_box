@@ -1,5 +1,3 @@
-
-
 #from time import sleep
 #import math
 import csv
@@ -19,9 +17,7 @@ GPIO.setmode(GPIO.BCM)
 
 pygame.mixer.init()
 
-
-
-
+#region Classes
 class NeoPixelController:
 	def __init__(self, led_pin, led_count, pixel_order):
 		if led_pin == 18:
@@ -167,8 +163,9 @@ class StepperMotorController:
 		print("Motor Stop")
 		self.is_motor_running = False
 		time.sleep(0.1)  # Delay to allow for the motor to stop gracefully
+#endregion
 	
-	
+#region I/O
 #GPIO0(EEPROM Data)
 #GPIO1(EEPROM Clock)
 
@@ -257,10 +254,46 @@ waterMotor = StepperMotorController(step_pin=4, direction_pin=None, steps_per_ro
 #foodMotor = StepperMotorController(step_pin=STEP_PIN2, direction_pin=DIRECTION_PIN2, steps_per_rotation=200)
 #waterMotor.start_motor(120)
 #define the order of the indicator lights
+# Define your pin numbers
+lever_pin = 5
+poke_pin = 6
+#beam_pin = 
+#buzzer_pin = 13
+prime_water_button_pin = 27
+start_trial_button_pin = 22
+test_stimulus_button_pin = 23
+test_interaction_button_pin = 24 
+test_reward_button_pin = 25
 
+lever = Button(lever_pin)
+poke = Button(poke_pin)
+#beam = Button(beam_pin)
+prime_water_button = Button(prime_water_button_pin)
+start_trial_button = Button(start_trial_button_pin, hold_time=5)
+test_stimulus_button = Button(test_stimulus_button_pin)
+test_interaction_button = Button(test_interaction_button_pin)
+test_reward_button = Button(test_reward_button_pin)
 
+#prime_water_button.when_pressed = waterMotor.on
+#prime_water_button.when_released = waterMotor.off
+
+prime_water_button.when_pressed = start_water
+prime_water_button.when_released = stop_water
+
+start_trial_button.when_pressed = start_trial
+start_trial_button.when_held = end_trial
+
+test_stimulus_button.when_pressed = test_stimulus_function
+test_interaction_button.when_pressed = user_interaction_function
+test_reward_button.when_pressed = test_reward_function
+
+lever.when_pressed = lever_interaction_function
+poke.when_pressed = poke_interaction_function
+#beam.when_pressed = beam_interaction_function
+
+#endregion
 	
-
+#region Filing
 def find_config_file(file_name):
 	config_file = None
 	drives = []
@@ -301,8 +334,9 @@ def read_config_file(file_path, default_config=None):
 			config.setdefault(parameter, value)
 
 	return config
+#endregion
 
-
+#region Config
 default_config = {
 	'Tone': 'FALSE',
 	'Tone Frequency': '100',
@@ -328,11 +362,6 @@ default_config = {
 	'Sound Address': '/home/pi/1000Hz_-6dBFS_1s.wav'
 	# Add more default parameters and values as needed
 }
-
-
-
-
-
 
 
 # Define your variables
@@ -544,7 +573,9 @@ def append_row_to_csv(directory, data_row):
 		print(f"Data appended to CSV file at {filepath}")
 	else:
 		print(f"CSV file does not exist at {filepath}")
+#endregion
 
+#region Functions
 def start_trial(channel):
 	global user_interactions
 	global count_goal
@@ -746,14 +777,15 @@ def goal():
 		goal_time = time.time() - start_experiment_time
 		threading.Timer(experiment_end_delay, end_experiment).start()
 		reward_function(False)
+#endregion 
 
+#region Rewarding
 def test_reward_function(channel):
 	global DEBUG
 	if DEBUG:
 		print("Test Reward")
 		#print(channel)
 	reward_function(True)
-
 
 def reward_function(override=False):
 	global total_water_amount
@@ -779,8 +811,9 @@ def reward_function(override=False):
 			indicatorStrip.pulse_on(0.5,WATER_REWARD_LIGHT)
 			old_water_motor.blink(on_time=water_amount, off_time=1, n=1, background=True)
 		# Add your reward delivery code here
-		
+#endregion	
 
+#region End Expiriment and Trial
 def end_experiment():
 	global experiment
 	global count_goal
@@ -841,9 +874,9 @@ def end_trial():
 		trial = False
 		if experiment:
 			end_experiment()
+#endregion
 
-
-
+#region Water
 def start_water(channel):
 
 	print("Start Water")
@@ -852,55 +885,17 @@ def start_water(channel):
 def stop_water(channel):
 	print("Stop Water")
 	old_water_motor.off()
+#endregion 
 
-# Define your pin numbers
-lever_pin = 5
-poke_pin = 6
-#beam_pin = 
-#buzzer_pin = 13
-prime_water_button_pin = 27
-start_trial_button_pin = 22
-test_stimulus_button_pin = 23
-test_interaction_button_pin = 24 
-test_reward_button_pin = 25
-
-
-lever = Button(lever_pin)
-poke = Button(poke_pin)
-#beam = Button(beam_pin)
-prime_water_button = Button(prime_water_button_pin)
-start_trial_button = Button(start_trial_button_pin, hold_time=5)
-test_stimulus_button = Button(test_stimulus_button_pin)
-test_interaction_button = Button(test_interaction_button_pin)
-test_reward_button = Button(test_reward_button_pin)
-
-#prime_water_button.when_pressed = waterMotor.on
-#prime_water_button.when_released = waterMotor.off
-
-prime_water_button.when_pressed = start_water
-prime_water_button.when_released = stop_water
-
-start_trial_button.when_pressed = start_trial
-start_trial_button.when_held = end_trial
-
-
-
-test_stimulus_button.when_pressed = test_stimulus_function
-test_interaction_button.when_pressed = user_interaction_function
-test_reward_button.when_pressed = test_reward_function
-
-lever.when_pressed = lever_interaction_function
-poke.when_pressed = poke_interaction_function
-#beam.when_pressed = beam_interaction_function
-
-
+#region Lighting
 def updateLights():
 	#stimulusRing.update()
 	indicatorStrip.update()
 	threading.Timer(.5, updateLights).start()
 
 threading.Timer(.5, updateLights).start()
-	
+
+#endregion
 
 #GPIO.setup(prime_water_button_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 #GPIO.add_event_detect(prime_water_button_pin, GPIO.FALLING, callback=waterMotor.start_motor, bouncetime=1000)
@@ -923,8 +918,6 @@ def update_led_colors():
 	# Return the LED colors as a JSON response
 	return jsonify({'success': True, 'led_colors': led_colors})
 
-	
-	
 @app.route('/debug_data')
 def debug_data():
 	poke_state = GPIO.input(poke_pin)
