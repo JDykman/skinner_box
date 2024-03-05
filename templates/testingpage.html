@@ -1,0 +1,24 @@
+{% block head %}
+<title>I/O Testing</title>
+{% endblock %}
+
+{% block body %}
+<h1>I/O Testing Page</h1>
+    <form action="/test_io" method="post">
+        
+        <h3>Test Stimulus</h3>
+        <button type="submit" name="action" value="sound">Sound</button>
+        <button type="submit" name="action" value="light">Light</button>
+        <br>
+
+        <h3>Test Input</h3>
+        <button type="submit" name="action" value="lever_press">Lever Press</button>
+        <button type="submit" name="action" value="nose_poke">Nose Poke</button>
+        <br>
+
+        <h3>Test Output</h3>
+        <button type="submit" name="action" value="feed">Feed</button>
+        <button type="submit" name="action" value="water">Water</button>
+    </form> 
+{% endblock %}
+

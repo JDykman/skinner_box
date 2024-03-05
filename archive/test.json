@@ -1,0 +1,29 @@
+{
+    "date": "2018-01-01",
+    "trail length": "0:20:00",
+    "data":{
+        "trial-settings":{
+            "version": "0.1",
+
+            "interactionGoal": 50,
+            "interactionsDuring": 50,
+
+            "setTrailLength": "0:45:00",
+            "trialDuration": "0:20:00"
+
+        },
+        "interactions":{
+            "leverPress":{
+                "time": "0:00:00",
+                "count": 1,
+                "rewardType": "food"
+            },
+            "nosePoke":{
+                "time": "0:00:00",
+                "count": 2,
+                "rewardType": "water"
+            }
+        }
+    }
+
+}

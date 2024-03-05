@@ -1,0 +1,10 @@
+body { font-family: Arial, sans-serif; padding: 20px; }
+        .container { max-width: 800px; margin: auto; }
+        header { text-align: center; }
+        .feature { margin-bottom: 20px; }
+        footer { text-align: center; margin-top: 40px; }
+
+h1 {
+        color: #ff0000;
+        
+}
