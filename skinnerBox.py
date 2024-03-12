@@ -1,12 +1,14 @@
 from signal import pause
 import pygame
-from flask import Flask, render_template, request, jsonify, url_for, redirect
-from gpiozero import LED, Button, Buzzer 
+from flask import Flask, Response, render_template, request, jsonify, url_for, redirect
+from gpiozero import LED, Button, OutputDevice
 import RPi.GPIO as GPIO
 import json
 import time
 import threading
-import board
+from picamera2 import Picamera2, Preview
+from rpi_ws281x import Adafruit_NeoPixel, Color
+import io 
 
 app = Flask(__name__)
 pygame.mixer.init()
@@ -14,98 +16,157 @@ settings_path = 'config.json'
 trial_running = False
 currentIteration = 0
 timeRemaining = 0
+# LED strip configuration:
+LED_COUNT      = 60      # Number of LED pixels.
+LED_PIN        = 12      # GPIO pin connected to the pixels (must support PWM!).
+LED_FREQ_HZ    = 800000  # LED signal frequency in hertz (usually 800khz)
+LED_DMA        = 10      # DMA channel to use for generating signal (try 10)
+LED_BRIGHTNESS = 255     # Set to 0 for darkest and 255 for brightest
+LED_INVERT     = False   # True to invert the signal (when using NPN transistor level shift)
 
+# Create NeoPixel object with appropriate configuration.
+strip = Adafruit_NeoPixel(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS)
+# Intialize the library (must be called once before other functions).
+strip.begin()
+#region I/O
+
+#Input Ports
+lever_port = 17
+nose_poke_port = 4
+start_trial_port = None
+water_primer_port = None
+manual_stimulus_port = None
+manual_interaction_port = None
+manual_reward_port = None
+
+#Output Ports
+feeder_port = 3
+water_port = 18
+speaker_port = 13
+
+#Button Settup
+lever = Button(lever_port, bounce_time=0.1)
+poke = Button(nose_poke_port, pull_up=False, bounce_time=0.1)
+
+#endregion
 
 #region Action Functions
 def feed():
-	flash_light(23, 1, 0.5)
-	#TODO Add code to feed the animal
-	return
+	try:
+		feeder_motor = OutputDevice(feeder_port, active_high=False, initial_value=False)
+		feeder_motor.on()
+		time.sleep(1) #TODO Feed Time
+		feeder_motor.off()
+		feeder_motor.close()
+	finally:
+		return
 
 def water():
-	flash_light(25, 1, 0.5)
-	#TODO Add code to water the animal
-	return
-
-def flash_light(pin, duration, interval):
-	"""
-	Flashes an LED light connected to a specified GPIO pin.
-
-	:param pin: The GPIO pin number to which the LED is connected.
-	:param duration: Total duration to flash the LED in seconds.
-	:param interval: Interval between flashes in seconds.
-	"""
-	# Set up GPIO pin
-	try: # Fixes issue with GPIO pin 'already being in use' causing a crash
-		led = LED(pin)
-		led.blink(interval, interval, duration)
-	except:
-		print("Error flashing light")
+	try:
+		water_motor = OutputDevice(water_port, active_high=False, initial_value=False)
+		water_motor.on()
+		time.sleep(1) #TODO Water Time
+		water_motor.off()
+		water_motor.close()
+	finally:
 		return
+
+
+def colorWipe(strip, color, wait_ms=50):
+	"""Wipe color across display a pixel at a time."""
+	for i in range(strip.numPixels()):
+		strip.setPixelColor(i, color)
+		strip.show()
+		time.sleep(wait_ms/1000.0)
+
+	for i in range(strip.numPixels()):
+		strip.setPixelColor(i, Color(0,0,0))
+		strip.show()
+		time.sleep(wait_ms/1000.0)
 
 def play_sound(pin, duration):
 	print("Playing sound")
-	buzzer = Buzzer(pin)
-
-	buzzer.on
-	time.sleep(duration)
+	buzzer = Buzzer(pin) #TODO should be a speaker I think
+	buzzer.on 
+	time.sleep(duration) # Wait a predetermained amount of time
 	buzzer.off
 
 def lever_press():
 	print("Lever pressed")
-	global currentIteration
-	currentIteration += 1
+	global currentIteration # Get the global variable
+	currentIteration += 1 # Increment the variable
 	feed()
 
 def nose_poke():
 	print("Nose poke")
-	global currentIteration
-	currentIteration += 1
+	global currentIteration # Get the global variable
+	currentIteration += 1 # Increment the variable
 	water()
 
-def check_buttons():
-	while True:
-		lever.when_pressed = lever_press
-		poke.when_pressed = nose_poke
-		time.sleep(0.1)  # Short delay to prevent CPU overload
-
 def trialFunction():
+	#Load Settings
 	settings = load_settings()
 	goal = int(settings['goal'])
 	duration = int(settings['duration']) * 60
+	# Get global variables
 	global currentIteration 
-	currentIteration = 0
 	global timeRemaining
-	timeRemaining = duration
 	global trial_running
+	#Set Variables
+	timeRemaining = duration
+	currentIteration = 0
+	lever.when_pressed = lever_press
+	poke.when_pressed = nose_poke
 	#Start Timer
 	startTime = time.time()
 	while trial_running:
-		#Update Variables
-		timeRemaining = (duration - (time.time() - startTime)).__round__(2)
-		#Check for inputs
-		lever.when_pressed = lever_press
+		timeRemaining = (duration - (time.time() - startTime)).__round__(2)	#Update Variable and round to the neares .00
+		#Activate inputs
+		lever.is_active = True
+		poke.is_active = True
 		if currentIteration >= goal:
-			trial_running = False
-			print("Trial complete")
+			endTrialFunction()
 			break
 		time.sleep(.10)
-	lever.when_pressed = None
+	#Disable inputs
+	lever.is_active = False
+	poke.is_active = False
 
-
+def endTrialFunction():
+	global trial_running
+	trial_running = False
+	print("Trial complete")
+	trial_thread.join()
+	return
 #Settings and File Management
 def load_settings():
     try:
         with open(settings_path, 'r') as file:
-            settings = json.load(file)  # Fixed from settings_file.load(file)
+            settings = json.load(file)
     except FileNotFoundError:
         settings = {}
     return settings
 
 def save_settings(settings):
-    with open(settings_path, 'w') as file:
-        json.dump(settings, file, indent=4)  # Fixed from settings_file.dump(settings, file, indent=4)
+	with open(settings_path, 'w') as file:
+		json.dump(settings, file, indent=4)
 
+#Video Feed
+def gen_frames():
+    picam2 = Picamera2()
+    picam2.start_preview()
+    jpeg_encoder = JpegEncoder()
+    picam2.configure(picam2.create_video_configuration(main={"size": (640, 480)}, encoder=jpeg_encoder))
+    picam2.start()
+    
+    while True:
+        stream = io.BytesIO()
+        picam2.capture_file(stream)
+        stream.seek(0)
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + stream.read() + b'\r\n')
+        stream.seek(0)
+        stream.truncate()
 #endregion
 
 #region Routes
@@ -127,9 +188,10 @@ def test_io():
 	if action == 'water':
 		water()
 	if action == 'light':
-		flash_light(24, 1, 0.5)
+		colorWipe(strip, Color(255, 0, 0))  # Red wipe
+
 	if action == 'sound':
-		play_sound(2, 1)
+		play_sound(speaker_port, 1)
 	if action == 'lever_press':
 		lever_press()
 	if action == 'nose_poke':
@@ -156,6 +218,11 @@ def start_trial():
 
 	return render_template('runningtrialpage.html', settings=settings)
 
+@app.route('/end-trial', methods=['POST'])
+def end_trial():
+	endTrialFunction()
+	return redirect(url_for('trial_settings'))
+
 @app.route('/trial-settings', methods=['GET'])
 def trial_settings():
     settings = load_settings()
@@ -168,6 +235,7 @@ def update_trial_settings():
         settings[key] = request.form[key]
     save_settings(settings)
     return redirect(url_for('trial_settings'))
+
 @app.route('/trial-status')
 def trial_status():
     # This should return the real-time values of countdown and current iteration
@@ -176,16 +244,13 @@ def trial_status():
 		'currentIteration': currentIteration
 	}
     return jsonify(trial_status)
+
+@app.route('/video-feed')
+def video_feed():
+    return Response(gen_frames(),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
 #endregion
 
-#region I/O
-
-#Buttons
-lever = Button(3)
-poke = Button(6)
-#LEDs
-
-#endregion
 
 # Run the app
 if __name__ == '__main__':
@@ -193,5 +258,5 @@ if __name__ == '__main__':
 	trial_thread = threading.Thread(target=trialFunction, daemon=True)
 		
 	# Start the Flask app
-	app.run(debug=True, use_reloader=False)
+	app.run(debug=True, use_reloader=False, host='0.0.0.0')
 

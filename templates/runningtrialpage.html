@@ -4,6 +4,7 @@
 <title>Trial Is Running</title>
 <script>
     function fetchTrialStatus() {
+        if(document.hidden) return; // Don't fetch if the page is hidden (e.g. in another tab
         fetch('/trial-status')
             .then(response => response.json())
             .then(data => {
@@ -34,9 +35,11 @@
             <label for="interval">Goal for trial (goal):</label>
             <label for="goal">"{{ settings.get('goal', '') }}"</label>
         </div>
+
         <!-- Additional settings inputs can be added here -->
     </form>
     <div>
+        <img src="{{ url_for('video_feed') }}" alt="Live Feed" style="width: 100px; height: 100px; margin: 10px;"/>
         <p>Countdown: <span id="timeRemaining">0</span></p>
         <p>Current Iteration: <span id="currentIteration">0</span></p>
     </div>
