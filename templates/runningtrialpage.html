@@ -6,12 +6,12 @@
     function fetchTrialStatus() {
         if(document.hidden) return; // Don't fetch if the page is hidden (e.g. in another tab
         fetch('/trial-status')
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('currentIteration').textContent = data.currentIteration;
-                document.getElementById('timeRemaining').textContent = data.timeRemaining;
-            })
-            .catch(error => console.error('Error fetching trial status:', error));
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('timeRemaining').textContent = data.timeRemaining;
+            document.getElementById('currentIteration').textContent = data.currentIteration;
+        })
+        .catch(error => console.error('Error fetching trial status:', error));
     }
 
     // Fetch trial status every second
@@ -35,15 +35,15 @@
             <label for="interval">Goal for trial (goal):</label>
             <label for="goal">"{{ settings.get('goal', '') }}"</label>
         </div>
-
-        <!-- Additional settings inputs can be added here -->
     </form>
     <div>
         <img src="{{ url_for('video_feed') }}" alt="Live Feed" style="width: 100px; height: 100px; margin: 10px;"/>
         <p>Countdown: <span id="timeRemaining">0</span></p>
         <p>Current Iteration: <span id="currentIteration">0</span></p>
     </div>
-    <!-- End Trial Button/Form Should Go Here -->
+    <form action="/stop" method="post">
+        <button type="submit" value="end-trial">Manually End Trial</button>
+    </form>
 </div>
 
 {% endblock %}

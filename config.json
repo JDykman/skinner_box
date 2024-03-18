@@ -1,9 +1,10 @@
 {
-    "duration": "10",
-    "goal": "10",
+    "duration": "1",
+    "goal": "12",
     "UseWater": "1",
     "useFood": "1",
     "tone": "1",
     "usePoke": "1",
-    "useLever": "1"
+    "useLever": "1",
+    "cooldown": "6"
 }

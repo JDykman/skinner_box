@@ -11,11 +11,7 @@ from rpi_ws281x import Adafruit_NeoPixel, Color
 import io 
 
 app = Flask(__name__)
-pygame.mixer.init()
 settings_path = 'config.json'
-trial_running = False
-currentIteration = 0
-timeRemaining = 0
 # LED strip configuration:
 LED_COUNT      = 60      # Number of LED pixels.
 LED_PIN        = 12      # GPIO pin connected to the pixels (must support PWM!).
@@ -27,7 +23,10 @@ LED_INVERT     = False   # True to invert the signal (when using NPN transistor 
 # Create NeoPixel object with appropriate configuration.
 strip = Adafruit_NeoPixel(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS)
 # Intialize the library (must be called once before other functions).
-strip.begin()
+try:
+	strip.begin()
+except:
+	pass
 #region I/O
 
 #Input Ports
@@ -49,6 +48,125 @@ lever = Button(lever_port, bounce_time=0.1)
 poke = Button(nose_poke_port, pull_up=False, bounce_time=0.1)
 
 #endregion
+
+class TrialStateMachine:
+    def __init__(self):
+        self.state = 'Idle'
+        self.lock = threading.Lock()
+        self.currentIteration = 0
+        self.timeRemaining = 0
+        self.settings = {}
+        self.startTime = None
+        
+    def load_settings(self):
+        # Implementation of loading settings from file
+        try:
+            with open('config.json', 'r') as file:
+                self.settings = json.load(file)
+        except FileNotFoundError:
+            self.settings = {}
+            
+    def start_trial(self):
+        with self.lock:
+            if self.state == 'Idle':
+                self.load_settings()
+                goal = int(self.settings.get('goal', 0))
+                duration = int(self.settings.get('duration', 0)) * 60
+                self.timeRemaining = duration
+                self.currentIteration = 0
+                self.state = 'Running'
+                threading.Thread(target=self.run_trial, args=(goal, duration)).start()
+                return True
+            return False
+
+    def pause_trial(self):
+        with self.lock:
+            if self.state == 'Running':
+                self.state = 'Paused'
+                self.pause_trial_logic()
+                return True
+            return False
+
+    def resume_trial(self):
+        with self.lock:
+            if self.state == 'Paused':
+                self.state = 'Running'
+                self.resume_trial_logic()
+                return True
+            return False
+
+    def stop_trial(self):
+        with self.lock:
+            if self.state in ['Preparing', 'Running', 'Paused']:
+                self.state = 'Idle'
+                self.release_resources()
+                return True
+            return False
+
+    def run_trial(self, goal, duration):
+        self.startTime = time.time()
+        lever.when_pressed = self.lever_press
+        poke.when_pressed = self.nose_poke
+        while self.state == 'Running':
+            self.timeRemaining = (duration - (time.time() - self.startTime)).__round__(2)
+            if self.currentIteration >= goal:
+                self.finish_trial()
+                break
+            if(self.timeRemaining <= 0):
+                self.finish_trial()
+                break    
+            time.sleep(.10)
+            
+    def lever_press(self):
+        if self.state == 'Running':
+            self.currentIteration += 1
+            feed()
+
+    def nose_poke(self):
+        if self.state == 'Running':
+            self.currentIteration += 1
+            water()
+            
+    def finish_trial(self):
+        with self.lock:
+            if self.state == 'Running':
+                self.state = 'Completed'
+                self.release_resources()
+                print("Trial complete")
+                return True
+            return False
+        
+    def error(self):
+        with self.lock:
+            self.state = 'Error'
+            self.handle_error()
+            self.release_resources()
+            self.state = 'Idle'
+
+    def initialize_resources(self):
+        # Code to initialize resources
+        pass
+
+    def release_resources(self):
+        # Code to release resources
+        pass
+    def pause_trial_logic(self):
+        # Code to pause trial
+        pass
+
+    def resume_trial_logic(self):
+        # Code to resume trial
+        pass
+
+    def handle_error(self):
+        # Code to handle errors
+        pass
+
+trial_state_machine = TrialStateMachine()
+
+
+# Define more endpoints for pause, resume, etc.
+
 
 #region Action Functions
 def feed():
@@ -92,52 +210,20 @@ def play_sound(pin, duration):
 	buzzer.off
 
 def lever_press():
-	print("Lever pressed")
-	global currentIteration # Get the global variable
-	currentIteration += 1 # Increment the variable
-	feed()
+    try:
+        trial_state_machine.currentIteration += 1
+    except:
+        pass
+    feed()
 
 def nose_poke():
-	print("Nose poke")
-	global currentIteration # Get the global variable
-	currentIteration += 1 # Increment the variable
-	water()
+    print("Nose poke")
+    try:
+        trial_state_machine.currentIteration += 1
+    except:
+        pass
+    water()
 
-def trialFunction():
-	#Load Settings
-	settings = load_settings()
-	goal = int(settings['goal'])
-	duration = int(settings['duration']) * 60
-	# Get global variables
-	global currentIteration 
-	global timeRemaining
-	global trial_running
-	#Set Variables
-	timeRemaining = duration
-	currentIteration = 0
-	lever.when_pressed = lever_press
-	poke.when_pressed = nose_poke
-	#Start Timer
-	startTime = time.time()
-	while trial_running:
-		timeRemaining = (duration - (time.time() - startTime)).__round__(2)	#Update Variable and round to the neares .00
-		#Activate inputs
-		lever.is_active = True
-		poke.is_active = True
-		if currentIteration >= goal:
-			endTrialFunction()
-			break
-		time.sleep(.10)
-	#Disable inputs
-	lever.is_active = False
-	poke.is_active = False
-
-def endTrialFunction():
-	global trial_running
-	trial_running = False
-	print("Trial complete")
-	trial_thread.join()
-	return
 #Settings and File Management
 def load_settings():
     try:
@@ -201,27 +287,27 @@ def test_io():
 
 @app.route('/trial', methods=['POST'])
 def trial():
-    settings = load_settings()  # Load settings
-    # Perform operations based on settings...
-    return render_template('trialpage.html', settings=settings)
-
-@app.route('/start-trial', methods=['POST'])
-def start_trial():
-	#TODO run trial function of dedicated thread
 	settings = load_settings()  # Load settings
-	global trial_running
-	trial_running = True
-	try:
-		trial_thread.start()
-	except:	
-		pass
+	if(trial_state_machine.state == 'running'):
+		return render_template('runningtrialpage.html', settings=settings)
+	
+	else:
+		settings = load_settings()  # Load settings
+		# Perform operations based on settings...
+		return render_template('trialpage.html', settings=settings)
 
-	return render_template('runningtrialpage.html', settings=settings)
+@app.route('/start', methods=['POST'])
+def start():
+    settings = load_settings()  # Load settings
+    if trial_state_machine.start_trial():
+        return render_template('runningtrialpage.html', settings=settings)
+    return render_template('runningtrialpage.html', settings=settings)
 
-@app.route('/end-trial', methods=['POST'])
-def end_trial():
-	endTrialFunction()
-	return redirect(url_for('trial_settings'))
+@app.route('/stop', methods=['POST'])
+def stop():
+    if trial_state_machine.stop_trial():
+        return redirect(url_for('trial_settings'))
+    return jsonify({"message": "Unable to stop trial"}), 400
 
 @app.route('/trial-settings', methods=['GET'])
 def trial_settings():
@@ -240,8 +326,8 @@ def update_trial_settings():
 def trial_status():
     # This should return the real-time values of countdown and current iteration
     trial_status = {
-		'timeRemaining': timeRemaining,
-		'currentIteration': currentIteration
+		'timeRemaining': trial_state_machine.timeRemaining,
+		'currentIteration': trial_state_machine.currentIteration
 	}
     return jsonify(trial_status)
 
@@ -254,9 +340,6 @@ def video_feed():
 
 # Run the app
 if __name__ == '__main__':
-	# Create and start the button checking thread
-	trial_thread = threading.Thread(target=trialFunction, daemon=True)
-		
 	# Start the Flask app
 	app.run(debug=True, use_reloader=False, host='0.0.0.0')
 
