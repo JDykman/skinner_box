@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from signal import pause
 import pygame
 from flask import Flask, Response, render_template, request, jsonify, url_for, redirect
@@ -31,7 +33,7 @@ except:
 
 #Input Ports
 lever_port = 17
-nose_poke_port = 4
+nose_poke_port = 15
 start_trial_port = None
 water_primer_port = None
 manual_stimulus_port = None
@@ -46,7 +48,6 @@ speaker_port = 13
 #Button Settup
 lever = Button(lever_port, bounce_time=0.1)
 poke = Button(nose_poke_port, pull_up=False, bounce_time=0.1)
-
 #endregion
 
 class TrialStateMachine:
@@ -54,10 +55,11 @@ class TrialStateMachine:
         self.state = 'Idle'
         self.lock = threading.Lock()
         self.currentIteration = 0
-        self.timeRemaining = 0
         self.settings = {}
         self.startTime = None
-        
+        self.interactable = True
+        self.lastInteractTime = 0.0
+        self.stimulusGiven = False
     def load_settings(self):
         # Implementation of loading settings from file
         try:
@@ -99,7 +101,6 @@ class TrialStateMachine:
         with self.lock:
             if self.state in ['Preparing', 'Running', 'Paused']:
                 self.state = 'Idle'
-                self.release_resources()
                 return True
             return False
 
@@ -117,56 +118,60 @@ class TrialStateMachine:
                 break    
             time.sleep(.10)
             
+    ## Interactions ##
     def lever_press(self):
         if self.state == 'Running':
-            self.currentIteration += 1
-            feed()
+            if self.interactable == True:
+                self.currentIteration += 1
+                feed()
+        self.lastInteractTime = time.time
+        self.stimulusGiven = False
 
     def nose_poke(self):
+        print("Nose poke")
         if self.state == 'Running':
-            self.currentIteration += 1
-            water()
-            
+             if self.interactable == True:
+                self.currentIteration += 1
+                water()
+        self.lastInteractTime = time.time
+        self.stimulusGiven = False
+        
+    ## Stimulus' ##
+    def light_stimulus(self):
+        if(self.stimulusGiven == False):
+            flashLightStim(strip, Color(255, 0, 0))
+            self.stimulusGiven = True 
+              
+    def noise_stimulus(self):
+        if(self.stimulusGiven == False):
+            #TODO Make noise
+            self.stimulusGiven = True   
+                    
     def finish_trial(self):
         with self.lock:
             if self.state == 'Running':
                 self.state = 'Completed'
-                self.release_resources()
                 print("Trial complete")
                 return True
             return False
-        
+            
     def error(self):
         with self.lock:
             self.state = 'Error'
             self.handle_error()
-            self.release_resources()
             self.state = 'Idle'
 
-    def initialize_resources(self):
-        # Code to initialize resources
-        pass
-
-    def release_resources(self):
-        # Code to release resources
-        pass
     def pause_trial_logic(self):
-        # Code to pause trial
+        # TODO Code to pause trial
         pass
 
     def resume_trial_logic(self):
-        # Code to resume trial
+        # TODO Code to resume trial
         pass
 
     def handle_error(self):
-        # Code to handle errors
+        # TODO Code to handle errors
         pass
-
-trial_state_machine = TrialStateMachine()
-
-
-# Define more endpoints for pause, resume, etc.
-
 
 #region Action Functions
 def feed():
@@ -190,24 +195,24 @@ def water():
 		return
 
 
-def colorWipe(strip, color, wait_ms=50):
-	"""Wipe color across display a pixel at a time."""
+def flashLightStim(strip, color, wait_ms=10):
+	"""Flash the light stimulus."""
+     # Turn lights on
 	for i in range(strip.numPixels()):
 		strip.setPixelColor(i, color)
 		strip.show()
 		time.sleep(wait_ms/1000.0)
-
+	# Turn lights off
 	for i in range(strip.numPixels()):
 		strip.setPixelColor(i, Color(0,0,0))
 		strip.show()
 		time.sleep(wait_ms/1000.0)
 
-def play_sound(pin, duration):
+def play_sound(pin, duration): #TODO 
 	print("Playing sound")
-	buzzer = Buzzer(pin) #TODO should be a speaker I think
-	buzzer.on 
+	#buzzer.on 
 	time.sleep(duration) # Wait a predetermained amount of time
-	buzzer.off
+	#buzzer.off
 
 def lever_press():
     try:
@@ -237,22 +242,6 @@ def save_settings(settings):
 	with open(settings_path, 'w') as file:
 		json.dump(settings, file, indent=4)
 
-#Video Feed
-def gen_frames():
-    picam2 = Picamera2()
-    picam2.start_preview()
-    jpeg_encoder = JpegEncoder()
-    picam2.configure(picam2.create_video_configuration(main={"size": (640, 480)}, encoder=jpeg_encoder))
-    picam2.start()
-    
-    while True:
-        stream = io.BytesIO()
-        picam2.capture_file(stream)
-        stream.seek(0)
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + stream.read() + b'\r\n')
-        stream.seek(0)
-        stream.truncate()
 #endregion
 
 #region Routes
@@ -274,7 +263,7 @@ def test_io():
 	if action == 'water':
 		water()
 	if action == 'light':
-		colorWipe(strip, Color(255, 0, 0))  # Red wipe
+		flashLightStim(strip, Color(255, 255, 255))
 
 	if action == 'sound':
 		play_sound(speaker_port, 1)
@@ -331,15 +320,17 @@ def trial_status():
 	}
     return jsonify(trial_status)
 
-@app.route('/video-feed')
-def video_feed():
-    return Response(gen_frames(),
-                    mimetype='multipart/x-mixed-replace; boundary=frame')
 #endregion
 
 
 # Run the app
 if __name__ == '__main__':
+    # Create a state machine
+	trial_state_machine = TrialStateMachine() 
+	#TODO Eventually make it so that I can have multiple. 
+		# Store them in an dict?
+
+
 	# Start the Flask app
 	app.run(debug=True, use_reloader=False, host='0.0.0.0')
 
