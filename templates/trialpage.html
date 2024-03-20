@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<title>Trial Settings</title>
+{% endblock %}
+
+{% block body %}
+
+
+
+<div class="container ">
+    <h1>Trial Page</h1>
+    <h2>Trial Settings</h2>
+    <form action="{{ url_for('update_trial_settings') }}" method="post">
+        <div class="form-group">
+            <label for="duration">Trial Duration (minutes)</label>
+            <input type="number" class="form-control" id="duration" name="duration" value="{{ settings.get('duration', '') }}" required>
+        </div>
+        <div class="form-group">
+            <label for="goal">Goal For Trial (goal)</label>
+            <input type="number" class="form-control" id="goal" name="goal" value="{{ settings.get('goal', '') }}" required>
+        </div>
+        <div class="form-group">
+            <label for="goal">Cooldown Between Interactions (seconds)</label>
+            <input type="number" class="form-control" id="cooldown" name="cooldown" value="{{ settings.get('cooldown', '') }}" required>
+        </div>
+        <!--Booleans-->
+        <div class="form-group">
+            <label for="useWater">Use Water?</label>
+            <label><input type="radio" name="UseWater" value="1" {{ 'checked' if settings.get('UseWater', '') == '1' else '' }} required> Yes</label>
+            <label><input type="radio" name="UseWater" value="0" {{ 'checked' if settings.get('UseWater', '') == '0' else '' }} required> No</label>
+
+        </div>
+        <div class="form-group">
+            <label for="useFood">Use Food?</label>
+            <label><input type="radio" name="useFood" value="1" {{ 'checked' if settings.get('useFood', '') == '1' else '' }} required> Yes</label>
+            <label><input type="radio" name="useFood" value="0" {{ 'checked' if settings.get('useFood', '') == '0' else '' }} required> No</label>        
+        </div>
+        <div class="form-group">
+            <label for="tone">Use Tone?</label>
+            <label><input type="radio" name="tone" value="1" {{ 'checked' if settings.get('tone', '') == '1' else '' }} required> Yes</label>
+            <label><input type="radio" name="tone" value="0" {{ 'checked' if settings.get('tone', '') == '0' else '' }} required> No</label>        
+        </div>
+        <div class="form-group">
+            <label for="usePoke">Use Poke?</label>
+            <label><input type="radio" name="usePoke" value="1" {{ 'checked' if settings.get('usePoke', '') == '1' else '' }} required> Yes</label>
+            <label><input type="radio" name="usePoke" value="0" {{ 'checked' if settings.get('usePoke', '') == '0' else '' }} required> No</label>        
+        </div>
+        <div class="form-group">
+            <label for="useLever">Use Lever?</label>
+            <label><input type="radio" name="useLever" value="1" {{ 'checked' if settings.get('useLever', '') == '1' else '' }} required> Yes</label>
+            <label><input type="radio" name="useLever" value="0" {{ 'checked' if settings.get('useLever', '') == '0' else '' }} required> No</label>        
+        </div>
+        <!-- Additional settings inputs can be added here -->
+        <button type="submit" class="btn btn-primary">Save Settings</button>
+    </form>
+    <form action="/start" method="post">
+        <button type="submit" value="start-trial">Start Trial</button>
+    </form>
+</div>
+
+{% endblock %}

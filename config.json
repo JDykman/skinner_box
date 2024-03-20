@@ -1,5 +1,10 @@
 {
-    "trialSettings":{
-        "goal": 50
-    }
+    "duration": "5",
+    "goal": "12",
+    "UseWater": "1",
+    "useFood": "1",
+    "tone": "1",
+    "usePoke": "1",
+    "useLever": "1",
+    "cooldown": "9"
 }
