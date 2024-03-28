@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log Viewer</title>
+<style>
+    #container {
+        display: flex;
+    }
+    #log-list {
+        width: 30%;
+        background-color: #eef;
+        padding: 10px;
+        height: 500px;
+        overflow-y: auto;
+    }
+    #log-viewer {
+        width: 70%;
+        background-color: #dde;
+        padding: 10px;
+        height: 500px;
+        overflow-y: auto;
+    }
+    #log-list a {
+        display: block;
+        margin-bottom: 5px;
+        cursor: pointer;
+    }
+    #download-btn {
+        display: none;
+        margin-top: 10px;
+    }
+</style>
+<script>
+    function viewLog(filename) {
+        // Fetch log content and display in the log viewer
+        fetch('/view-log/' + filename)
+            .then(response => response.text())
+            .then(html => {
+                // Use innerHTML to parse the HTML content
+                document.getElementById('log-viewer').innerHTML = html;
+                // Update the download button
+                var downloadBtn = document.getElementById('download-btn');
+                downloadBtn.href = '/download-log/' + filename;
+                downloadBtn.style.display = 'block';
+            });
+    }
+</script>
+
+</head>
+<body>
+<div id="container">
+    <div id="log-list">
+        <!-- Log list will be populated by Flask -->
+        {% for log_file in log_files %}
+        <a onclick="viewLog('{{ log_file }}')">{{ log_file }}</a>
+        {% endfor %}
+    </div>
+    <div id="log-viewer">
+        <!-- Log content will be displayed here -->
+        <p>Log Viewer:</p>
+    </div>
+</div>
+<a id="download-btn" href="" download>Download</a>
+
+</body>
+</html>
