@@ -517,4 +517,3 @@ if __name__ == '__main__':
 
 	# Start the Flask app
 	app.run(debug=False, use_reloader=False, host='0.0.0.0')
-
