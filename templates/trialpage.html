@@ -26,30 +26,23 @@
         </div>
         <!--Booleans-->
         <div class="form-group">
-            <label for="useWater">Use Water?</label>
-            <label><input type="radio" name="UseWater" value="1" {{ 'checked' if settings.get('UseWater', '') == '1' else '' }} required> Yes</label>
-            <label><input type="radio" name="UseWater" value="0" {{ 'checked' if settings.get('UseWater', '') == '0' else '' }} required> No</label>
-
+            <label for="rewardType">Reward Type.</label>
+            <label><input type="radio" name="rewardType" value="water" {{ 'checked' if settings.get('rewardType', '') == 'water' else '' }} required>Water</label>
+            <label><input type="radio" name="rewardType" value="food" {{ 'checked' if settings.get('rewardType', '') == 'food' else '' }} required>Food</label>
         </div>
         <div class="form-group">
-            <label for="useFood">Use Food?</label>
-            <label><input type="radio" name="useFood" value="1" {{ 'checked' if settings.get('useFood', '') == '1' else '' }} required> Yes</label>
-            <label><input type="radio" name="useFood" value="0" {{ 'checked' if settings.get('useFood', '') == '0' else '' }} required> No</label>        
+            <label for="interactionType">Interaction Type.</label>
+            <label><input type="radio" name="interactionType" value="lever" {{ 'checked' if settings.get('interactionType', '') == 'lever' else '' }} required>Lever</label>
+            <label><input type="radio" name="interactionType" value="poke" {{ 'checked' if settings.get('interactionType', '') == 'poke' else '' }} required>Poke</label>
         </div>
         <div class="form-group">
-            <label for="tone">Use Tone?</label>
-            <label><input type="radio" name="tone" value="1" {{ 'checked' if settings.get('tone', '') == '1' else '' }} required> Yes</label>
-            <label><input type="radio" name="tone" value="0" {{ 'checked' if settings.get('tone', '') == '0' else '' }} required> No</label>        
+            <label for="stimulusType">Stimulus Type.</label>
+            <label><input type="radio" name="stimulusType" value="light" {{ 'checked' if settings.get('stimulusType', '') == 'light' else '' }} required>Light</label>        
+            <label><input type="radio" name="stimulusType" value="tone" {{ 'checked' if settings.get('stimulusType', '') == 'tone' else '' }} required>Tone</label>
         </div>
         <div class="form-group">
-            <label for="usePoke">Use Poke?</label>
-            <label><input type="radio" name="usePoke" value="1" {{ 'checked' if settings.get('usePoke', '') == '1' else '' }} required> Yes</label>
-            <label><input type="radio" name="usePoke" value="0" {{ 'checked' if settings.get('usePoke', '') == '0' else '' }} required> No</label>        
-        </div>
-        <div class="form-group">
-            <label for="useLever">Use Lever?</label>
-            <label><input type="radio" name="useLever" value="1" {{ 'checked' if settings.get('useLever', '') == '1' else '' }} required> Yes</label>
-            <label><input type="radio" name="useLever" value="0" {{ 'checked' if settings.get('useLever', '') == '0' else '' }} required> No</label>        
+            <label for"light-color">Light Color.</label>
+            <input type="color" name="light-color" value="{{ settings.get('light-color', '') }}">
         </div>
         <!-- Additional settings inputs can be added here -->
         <button type="submit" class="btn btn-primary">Save Settings</button>

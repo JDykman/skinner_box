@@ -1,0 +1,44 @@
+<!-- templates/summarypage.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Summary Page</title>
+    <style>
+        .container {
+            display: flex;
+        }
+        .log-section {
+            flex: 1;
+            height: 500px; /* Adjust height as needed */
+            overflow-y: auto;
+            border-right: 1px solid #ccc;
+            padding: 10px;
+        }
+        .summary-section {
+            flex: 2;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="log-section">
+            <h2>Logs</h2>
+            <ul>
+                {% for log in trial_logs %}
+                    <li>{{ log }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="summary-section">
+            <h1>Trial Summary</h1>
+            <p>Total Trials Conducted: {{ trial_summary.total_trials }}</p>
+            <p>Total Interactions: {{ trial_summary.total_interactions }}</p>
+            <p>Total Rewards Given: {{ trial_summary.total_rewards }}</p>
+            <!-- Add more stats as needed -->
+            <a href="/">Go Back to Homepage</a>
+        </div>
+    </div>
+</body>
+</html>
