@@ -1,9 +1,5 @@
 #!/bin/bash
 
-#Set motor pin to pullup
-gpio -g mode 18 out
-gpio -g write 18 0
-
 #Check to make sure packages are installed
 ensure_package_installed() {
     PACKAGE_NAME=$1

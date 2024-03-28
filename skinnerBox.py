@@ -155,7 +155,7 @@ class TrialStateMachine:
         while self.state == 'Running':
             self.timeRemaining = (duration - (time.time() - self.startTime)).__round__(2)
             if (time.time() - self.lastStimulusTime) >= 10 and self.interactable:
-                print("No interaction in last 10s, ReStimming")
+                print("No interaction in last 10s, Re-Stimming")
                 self.give_stimulus()
 
             #Finish trial
@@ -190,10 +190,10 @@ class TrialStateMachine:
        
     ## Stimulus' ##
     def queue_stimulus(self): #give after cooldown
-        if(self.settings.get('stimulusType') == 'light'):
+        if(self.settings.get('stimulusType') == 'light' and self.interactable == False):
             self.stimulusCooldownThread = threading.Timer(float(self.settings.get('cooldown', 0)), self.light_stimulus)
             self.stimulusCooldownThread.start() 
-        elif(self.settings.get('stimulusType') == 'tone'):
+        elif(self.settings.get('stimulusType') == 'tone' and self.interactable == False):
             self.stimulusCooldownThread = threading.Timer(float(self.settings.get('cooldown', 0)), self.noise_stimulus)
             self.stimulusCooldownThread.start()  
 
@@ -205,7 +205,7 @@ class TrialStateMachine:
         self.lastStimulusTime = time.time()  # Reset the timer after delivering the stimulus
 
     def light_stimulus(self):
-        if(self.interactable == False):
+        if(strip):
             hex_color = self.settings.get('light-color') # Html uses hexadecimal colors 
             r, g, b = int(hex_color[1:3], 16), int(hex_color[3:5], 16), int(hex_color[5:], 16) #So we convert it to rgb
             color = Color(r,g,b)
