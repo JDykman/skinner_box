@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 
 from signal import pause
-from flask import Flask, render_template, request, jsonify, send_from_directory, url_for, redirect
-from gpiozero import Button, OutputDevice
+import pygame
+from flask import Flask, Response, render_template, request, jsonify, send_file, send_from_directory, url_for, redirect
+from gpiozero import LED, Button, OutputDevice
+import RPi.GPIO as GPIO
 import json
 import time
 import threading
+from picamera2 import Picamera2, Preview
 from rpi_ws281x import Adafruit_NeoPixel, Color
 import csv
 import os
@@ -13,7 +16,7 @@ from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 settings_path = 'config.json'
-log_path = '/home/jacob/Downloads/skinner_box-main/logs'
+log_directory = '/home/jacob/Downloads/skinner_box-main/logs/'
 # LED strip configuration:
 LED_COUNT      = 60      # Number of LED pixels.
 LED_PIN        = 12      # GPIO pin connected to the pixels (must support PWM!).
@@ -33,8 +36,8 @@ except:
     print("Error starting strip")
     pass
 
-def list_log_files(log_directory='/home/jacob/Downloads/skinner_box-main/logs'):
-    return [f for f in os.listdir(log_directory) if os.path.isfile(os.path.join(log_directory, f))]
+def list_log_files(_log_directory=log_directory):
+    return [f for f in os.listdir(_log_directory) if os.path.isfile(os.path.join(_log_directory, f))]
 
 #region I/O
 
@@ -60,52 +63,26 @@ manual_stimulus_button = Button(manual_stimulus_port, bounce_time=0.1)
 manual_interaction = Button(manual_interaction_port, bounce_time=0.1)
 manual_reward = Button(manual_reward_port, bounce_time=0.1)
 start_trial_button = Button(start_trial_port, bounce_time=0.1)
+
+#manual_stimulus_button.when_held
+#manual_interaction.when_held()
+#manual_reward.when_held()
 #endregion
 
 
 def start_motor():
     water_motor = OutputDevice(water_port, active_high=False, initial_value=False)
+    print("Motor starting")  # Optional: for debugging
     water_motor.on()  # Start the motor
     water_primer.when_released = lambda: stop_motor(water_motor)
 
 def stop_motor(motor):
+    print("Motor stopping")  # Optional: for debugging
     motor.off()  # Stop the motor
     motor.close()
 
 
 class TrialStateMachine:
-    """
-    Manages the state and behavior of trials within a behavioral experiment setup, typically in a Skinner box.
-    It controls trial flow, including starting, pausing, resuming, stopping, and handling user interactions and stimuli.
-
-    Attributes:
-        state (str): Current state of the trial, which can be 'Idle', 'Running', 'Paused', 'Completed', or 'Error'.
-        lock (threading.Lock): A lock to ensure thread-safe modifications of the state machine.
-        currentIteration (int): Counter for the number of interactions (e.g., lever presses) within the current trial.
-        settings (dict): Configuration settings for the trial, loaded from a JSON file.
-        startTime (float): Timestamp marking the start of the trial.
-        interactable (bool): Flag indicating whether the trial is ready for interactions (True) or not (False).
-        lastInteractTime (float): Timestamp of the last interaction.
-        lastStimulusTime (float): Timestamp of the last stimulus provided to the subject.
-        stimulusCooldownThread (threading.Thread): Separate thread used for managing stimulus cooldown.
-        log_path (str): Path to the directory where trial logs are saved.
-
-    Methods:
-        load_settings(): Loads trial settings from a predefined JSON configuration file.
-        start_trial(): Attempts to start a trial if the state machine is in the 'Idle' state.
-        pause_trial(): Pauses an ongoing trial, switching its state to 'Paused'.
-        resume_trial(): Resumes a paused trial, changing its state back to 'Running'.
-        stop_trial(): Stops an ongoing or paused trial, resetting the state to 'Idle'.
-        run_trial(goal, duration): The main logic for running a trial, managing interactions, stimuli, and rewards based on the trial settings.
-        lever_press(), nose_poke(): Handle respective interactions, logging them, and potentially providing rewards.
-        queue_stimulus(): Schedules a stimulus after a cooldown period.
-        give_stimulus(): Immediately provides a stimulus based on the current settings.
-        light_stimulus(), noise_stimulus(): Specific methods for delivering light and noise stimuli.
-        give_reward(): Provides a reward based on the trial's settings (e.g., water, food).
-        finish_trial(): Marks the trial as completed and performs any necessary cleanup.
-        error(): Sets the trial state to 'Error' and handles any error conditions.
-        pause_trial_logic(), resume_trial_logic(), handle_error(): Placeholder methods for future logic related to pausing, resuming, and error handling in trials.
-    """
     def __init__(self):
         self.state = 'Idle'
         self.lock = threading.Lock()
@@ -116,8 +93,9 @@ class TrialStateMachine:
         self.lastInteractTime = 0.0
         self.lastStimulusTime = 0.0
         self.stimulusCooldownThread = None
-        self.log_path = '/home/jacob/Downloads/skinner_box-main/logs/'
+        self.log_path = '/home/jacob/Downloads/skinner_box-main/logs'
     def load_settings(self):
+        # Implementation of loading settings from file
         try:
             with open('config.json', 'r') as file:
                 self.settings = json.load(file)
@@ -479,7 +457,6 @@ def log_viewer():
 @app.route('/download-raw-log/<filename>')
 def download_raw_log_file(filename):
     filename = secure_filename(filename)  # Sanitize the filename
-    log_directory = '/home/jacob/Downloads/skinner_box-main/logs/'
     try:
         return send_from_directory(directory=log_directory, path=filename, as_attachment=True, download_name=filename)
     except FileNotFoundError:
@@ -503,7 +480,6 @@ def download_excel_log_file(filename):
 @app.route('/view-log/<filename>')
 def view_log(filename):
     filename = secure_filename(filename)
-    log_directory = '/home/jacob/Downloads/skinner_box-main/logs/'
     file_path = os.path.join(log_directory, filename)
 
     if os.path.isfile(file_path):
@@ -520,47 +496,17 @@ def view_log(filename):
         return render_template("t_logviewer.html", rows=rows)
     else:
         return "Log file not found.", 404
-
-TrialStateMachine
-
-
-# The download route would remain the same as previously defined
-
     
 #endregion
 
-# Create a state machine
-trial_state_machine = TrialStateMachine() 
-water_primer.when_pressed = start_motor
-start_trial_button.when_pressed = trial_state_machine.start_trial
-manual_interaction.when_pressed = water
-
-
-def rename_log_files(log_directory='/home/jacob/Downloads/skinner_box-main/logs/'):
-    # Iterate over all files in the directory
-    for filename in os.listdir(log_directory):
-        if ' ' in filename or ':' in filename:
-            # Replace spaces and colons with underscores
-            new_filename = filename.replace(' ', '_').replace(':', '_')
-            # Construct the full old and new file paths
-            old_file = os.path.join(log_directory, filename)
-            new_file = os.path.join(log_directory, new_filename)
-            # Rename the file
-            os.rename(old_file, new_file)
-            print(f'Renamed "{filename}" to "{new_filename}"')
-
-# Call the function
-rename_log_files()
-
-
-
-
-
 # Run the app
 if __name__ == '__main__':
-	#TODO Eventually make it so that I can have multiple. 
-		# Store them in an dict?
-
-
-	# Start the Flask app
-	app.run(debug=False, use_reloader=False, host='0.0.0.0')
+    # Create a state machine
+    trial_state_machine = TrialStateMachine()
+    water_primer.when_pressed = start_motor
+    start_trial_button.when_pressed = trial_state_machine.start_trial
+    manual_interaction.when_pressed = water
+    # Call the function to ensure naming is correct
+    rename_log_files()
+    # Start the Flask app
+    app.run(debug=False, use_reloader=False, host='0.0.0.0')
