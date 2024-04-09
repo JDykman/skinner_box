@@ -154,7 +154,7 @@ class TrialStateMachine:
 
         while self.state == 'Running':
             self.timeRemaining = (duration - (time.time() - self.startTime)).__round__(2)
-            if (time.time() - self.lastStimulusTime) >= 10 and self.interactable:
+            if (time.time() - self.lastStimulusTime) >= float(self.settings.get('cooldown', 0)) and self.interactable:
                 print("No interaction in last 10s, Re-Stimming")
                 self.give_stimulus()
 
