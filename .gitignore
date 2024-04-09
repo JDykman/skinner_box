@@ -1,0 +1,19 @@
+# Directories
+######################
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+logs/
+
+# Python
+######################
+*.py[cod]
+__pycache__/
+*.pyc
+.lgd-nfy0
+
+# Visual Studio Code
+.vscode/
+
