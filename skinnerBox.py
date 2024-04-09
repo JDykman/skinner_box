@@ -16,6 +16,7 @@ from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 settings_path = 'config.json'
+log_directory = '/home/jacob/Downloads/skinner_box-main/logs/'
 # LED strip configuration:
 LED_COUNT      = 60      # Number of LED pixels.
 LED_PIN        = 12      # GPIO pin connected to the pixels (must support PWM!).
@@ -27,6 +28,7 @@ LED_INVERT     = False   # True to invert the signal (when using NPN transistor 
 # Create NeoPixel object with appropriate configuration.
 strip = Adafruit_NeoPixel(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS)
 # Intialize the library (must be called once before other functions).
+
 try:
     strip.begin()
     print("Starting strip")
@@ -34,8 +36,8 @@ except:
     print("Error starting strip")
     pass
 
-def list_log_files(log_directory='logs/'):
-    return [f for f in os.listdir(log_directory) if os.path.isfile(os.path.join(log_directory, f))]
+def list_log_files(_log_directory=log_directory):
+    return [f for f in os.listdir(_log_directory) if os.path.isfile(os.path.join(_log_directory, f))]
 
 #region I/O
 
@@ -74,14 +76,10 @@ def start_motor():
     water_motor.on()  # Start the motor
     water_primer.when_released = lambda: stop_motor(water_motor)
 
-
 def stop_motor(motor):
     print("Motor stopping")  # Optional: for debugging
     motor.off()  # Stop the motor
     motor.close()
-
-# Setup event handlers for the button
-
 
 
 class TrialStateMachine:
@@ -161,12 +159,12 @@ class TrialStateMachine:
             #Finish trial
             if self.currentIteration >= goal or self.timeRemaining <= 0:
                 self.finish_trial()
-                break            
+                break
             time.sleep(.10)
             
-    ## Interactions ##    
+    ## Interactions ##
     def lever_press(self):
-        if self.state == 'Running':              
+        if self.state == 'Running':
             if self.interactable:
                 self.interactable = False  # Disallow further interactions
                 self.currentIteration += 1
@@ -187,17 +185,17 @@ class TrialStateMachine:
                 log_interaction(self.log_path, round((time.time() - self.startTime), 2), "Nose poke", "Yes")
                 return
         log_interaction(self.log_path, round((time.time() - self.startTime), 2), "Nose poke", "No")
-       
+
     ## Stimulus' ##
     def queue_stimulus(self): #give after cooldown
         if(self.settings.get('stimulusType') == 'light' and self.interactable == False):
             self.stimulusCooldownThread = threading.Timer(float(self.settings.get('cooldown', 0)), self.light_stimulus)
-            self.stimulusCooldownThread.start() 
+            self.stimulusCooldownThread.start()
         elif(self.settings.get('stimulusType') == 'tone' and self.interactable == False):
             self.stimulusCooldownThread = threading.Timer(float(self.settings.get('cooldown', 0)), self.noise_stimulus)
-            self.stimulusCooldownThread.start()  
+            self.stimulusCooldownThread.start()
 
-    def give_stimulus(self): #Give Immedietly 
+    def give_stimulus(self): #Give Immedietly
         if(self.settings.get('stimulusType') == 'light'):
             self.light_stimulus()
         elif(self.settings.get('stimulusType') == 'tone'):
@@ -206,10 +204,10 @@ class TrialStateMachine:
 
     def light_stimulus(self):
         if(strip):
-            hex_color = self.settings.get('light-color') # Html uses hexadecimal colors 
+            hex_color = self.settings.get('light-color') # Html uses hexadecimal colors
             r, g, b = int(hex_color[1:3], 16), int(hex_color[3:5], 16), int(hex_color[5:], 16) #So we convert it to rgb
             color = Color(r,g,b)
-            flashLightStim(strip, color) 
+            flashLightStim(strip, color)
             self.interactable = True
             self.lastStimulusTime = time.time()
 
@@ -290,9 +288,9 @@ def flashLightStim(strip, color, wait_ms=10):
             strip.show()
             time.sleep(wait_ms/1000.0)
 
-def play_sound(pin, duration): #TODO 
+def play_sound(pin, duration): #TODO
 	print("Playing sound")
-	#buzzer.on 
+	#buzzer.on
 	time.sleep(duration) # Wait a predetermained amount of time
 	#buzzer.off
 
@@ -347,6 +345,18 @@ def log_interaction(path, time, interaction_type, reward_given):
         writer = csv.writer(file)
         writer.writerow(data)
 
+def rename_log_files(_log_directory=log_directory):
+    # Iterate over all files in the directory
+    for filename in os.listdir(_log_directory):
+        if ' ' in filename or ':' in filename:
+            # Replace spaces and colons with underscores
+            new_filename = filename.replace(' ', '_').replace(':', '_')
+            # Construct the full old and new file paths
+            old_file = os.path.join(_log_directory, filename)
+            new_file = os.path.join(_log_directory, new_filename)
+            # Rename the file
+            os.rename(old_file, new_file)
+            print(f'Renamed "{filename}" to "{new_filename}"')
 
 #endregion
 
@@ -369,7 +379,7 @@ def test_io():
 	if action == 'water':
 		water()
 	if action == 'light':
-		flashLightStim(strip, Color(255, 255, 255))
+		flashLightStim(strip, Color(255, 255, 255)) #TODO Change to settings
 
 	if action == 'sound':
 		play_sound(speaker_port, 1)
@@ -444,19 +454,32 @@ def log_viewer():
     return render_template('logpage.html', log_files=log_files)
 
 
-@app.route('/download-log/<filename>')
-def download_log_file(filename):
+@app.route('/download-raw-log/<filename>')
+def download_raw_log_file(filename):
     filename = secure_filename(filename)  # Sanitize the filename
-    log_directory = 'logs/'
     try:
         return send_from_directory(directory=log_directory, path=filename, as_attachment=True, download_name=filename)
     except FileNotFoundError:
         return "Log file not found.", 404
 
+@app.route('/download-excel-log/<filename>')
+def download_excel_log_file(filename):
+    filename = secure_filename(filename)
+    try:
+        # Convert the CSV file to an Excel file
+        csv_file = os.path.join(log_directory, filename)
+        excel_file = os.path.join(log_directory, f'{filename.rsplit(".", 1)[0]}.xlsx')
+        df = pd.read_csv(csv_file, header=None)
+        df.to_excel(excel_file, index=False, header=False)
+
+        # Send the Excel file as an attachment
+        return send_file(excel_file, as_attachment=True, download_name=filename.rsplit(".", 1)[0] + '.xlsx')
+    except FileNotFoundError:
+        return "Log file not found.", 404
+    
 @app.route('/view-log/<filename>')
 def view_log(filename):
     filename = secure_filename(filename)
-    log_directory = 'logs/'
     file_path = os.path.join(log_directory, filename)
 
     if os.path.isfile(file_path):
@@ -473,47 +496,17 @@ def view_log(filename):
         return render_template("t_logviewer.html", rows=rows)
     else:
         return "Log file not found.", 404
-
-
-
-
-# The download route would remain the same as previously defined
-
     
 #endregion
 
-# Create a state machine
-trial_state_machine = TrialStateMachine() 
-water_primer.when_pressed = start_motor
-start_trial_button.when_pressed = trial_state_machine.start_trial
-manual_interaction.when_pressed = water
-
-
-def rename_log_files(log_directory='logs/'):
-    # Iterate over all files in the directory
-    for filename in os.listdir(log_directory):
-        if ' ' in filename or ':' in filename:
-            # Replace spaces and colons with underscores
-            new_filename = filename.replace(' ', '_').replace(':', '_')
-            # Construct the full old and new file paths
-            old_file = os.path.join(log_directory, filename)
-            new_file = os.path.join(log_directory, new_filename)
-            # Rename the file
-            os.rename(old_file, new_file)
-            print(f'Renamed "{filename}" to "{new_filename}"')
-
-# Call the function
-rename_log_files()
-
-
-
-
-
 # Run the app
 if __name__ == '__main__':
-	#TODO Eventually make it so that I can have multiple. 
-		# Store them in an dict?
-
-
-	# Start the Flask app
-	app.run(debug=False, use_reloader=False, host='0.0.0.0')
+    # Create a state machine
+    trial_state_machine = TrialStateMachine()
+    water_primer.when_pressed = start_motor
+    start_trial_button.when_pressed = trial_state_machine.start_trial
+    manual_interaction.when_pressed = water
+    # Call the function to ensure naming is correct
+    rename_log_files()
+    # Start the Flask app
+    app.run(debug=False, use_reloader=False, host='0.0.0.0')
