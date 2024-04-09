@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
 from signal import pause
+from openpyxl import Workbook
 import pygame
-from flask import Flask, Response, render_template, request, jsonify, send_file, send_from_directory, url_for, redirect
+from flask import Flask, Response, render_template, request, jsonify,  send_file, send_from_directory, url_for, redirect
 from gpiozero import LED, Button, OutputDevice
 import RPi.GPIO as GPIO
 import json
@@ -12,7 +13,9 @@ from picamera2 import Picamera2, Preview
 from rpi_ws281x import Adafruit_NeoPixel, Color
 import csv
 import os
-from werkzeug.utils import secure_filename
+from werkzeug.utils import secure_filename, safe_join
+import pandas as pd
+import tempfile
 
 app = Flask(__name__)
 settings_path = 'config.json'
@@ -27,7 +30,6 @@ LED_INVERT     = False   # True to invert the signal (when using NPN transistor 
 
 # Create NeoPixel object with appropriate configuration.
 strip = Adafruit_NeoPixel(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS)
-# Intialize the library (must be called once before other functions).
 
 try:
     strip.begin()
@@ -453,7 +455,6 @@ def log_viewer():
     log_files = list_log_files()  # Assume this function returns the list of log file names.
     return render_template('logpage.html', log_files=log_files)
 
-
 @app.route('/download-raw-log/<filename>')
 def download_raw_log_file(filename):
     filename = secure_filename(filename)  # Sanitize the filename
@@ -461,19 +462,30 @@ def download_raw_log_file(filename):
         return send_from_directory(directory=log_directory, path=filename, as_attachment=True, download_name=filename)
     except FileNotFoundError:
         return "Log file not found.", 404
-
 @app.route('/download-excel-log/<filename>')
 def download_excel_log_file(filename):
-    filename = secure_filename(filename)
+    secure_filename = safe_join(log_directory, filename)  # Ensure the path is secure
     try:
-        # Convert the CSV file to an Excel file
-        csv_file = os.path.join(log_directory, filename)
-        excel_file = os.path.join(log_directory, f'{filename.rsplit(".", 1)[0]}.xlsx')
-        df = pd.read_csv(csv_file, header=None)
-        df.to_excel(excel_file, index=False, header=False)
+        # Initialize a workbook and select the active worksheet
+        wb = Workbook()
+        ws = wb.active
+        
+        # Define your column titles here
+        column_titles = ['Entry', 'Time', 'Type', 'Reward']
+        ws.append(column_titles)
 
+        # Read the CSV file and append rows to the worksheet
+        with open(secure_filename, mode='r', newline='') as file:
+            reader = csv.reader(file)
+            for row in reader:
+                ws.append(row)
+        
+        # Save the workbook to a temporary file
+        temp_file = os.path.join('/home/jacob/Downloads/skinner_box-main/temp/', f'{filename.rsplit(".", 1)[0]}.xlsx')
+        wb.save(temp_file)
+        
         # Send the Excel file as an attachment
-        return send_file(excel_file, as_attachment=True, download_name=filename.rsplit(".", 1)[0] + '.xlsx')
+        return send_file(temp_file, as_attachment=True, download_name=f'{filename.rsplit(".", 1)[0]}.xlsx', mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     except FileNotFoundError:
         return "Log file not found.", 404
     
@@ -496,7 +508,6 @@ def view_log(filename):
         return render_template("t_logviewer.html", rows=rows)
     else:
         return "Log file not found.", 404
-    
 #endregion
 
 # Run the app
