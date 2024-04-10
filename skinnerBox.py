@@ -112,9 +112,12 @@ class TrialStateMachine:
                 duration = int(self.settings.get('duration', 0)) * 60
                 self.timeRemaining = duration
                 self.currentIteration = 0
-                self.lastStimulusTime = time.time()  # Initialize lastStimulusTime here
+                self.lastStimulusTime = time.time()  
                 self.state = 'Running'
-                safe_time_str = time.strftime("%H:%M:%S").replace(":", "_")
+                # Format the current time to include date and time in the filename
+                # YYYY_MM_DD_HH_MM_SS
+                safe_time_str = time.strftime("%m_%d_%y_%H_%M_%S").replace(":", "_")
+                # Update log_path to include the date and time
                 self.log_path = f"/home/jacob/Downloads/skinner_box-main/logs/log_{safe_time_str}.csv"
                 threading.Thread(target=self.run_trial, args=(goal, duration)).start()
                 self.give_stimulus()
