@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import datetime
 from signal import pause
 from openpyxl import Workbook
 import pygame
@@ -112,7 +113,7 @@ class TrialStateMachine:
                 duration = int(self.settings.get('duration', 0)) * 60
                 self.timeRemaining = duration
                 self.currentIteration = 0
-                self.lastStimulusTime = time.time()  
+                self.lastStimulusTime = time.time()
                 self.state = 'Running'
                 # Format the current time to include date and time in the filename
                 # YYYY_MM_DD_HH_MM_SS
@@ -200,7 +201,7 @@ class TrialStateMachine:
             self.stimulusCooldownThread = threading.Timer(float(self.settings.get('cooldown', 0)), self.noise_stimulus)
             self.stimulusCooldownThread.start()
 
-    def give_stimulus(self): #Give Immedietly
+    def give_stimulus(self): #Give immediately
         if(self.settings.get('stimulusType') == 'light'):
             self.light_stimulus()
         elif(self.settings.get('stimulusType') == 'tone'):
@@ -327,25 +328,48 @@ def save_settings(settings):
 	with open(settings_path, 'w') as file:
 		json.dump(settings, file, indent=4)
 
-def log_interaction(path, time, interaction_type, reward_given):
+def create_log_file(path):
+    with open(path, 'w', newline='') as file:
+        writer = csv.writer(file)
+        headers = ['Date/Time', 'Total Time', 'Total Interactions', '', 'Entry', 'Interaction Time', 'Type', 'Reward', 'Interactions Between', 'Time Between']
+        writer.writerow(headers)
+        # Write the date and time of the trial under the 'Date/Time' column
+        writer.writerow([datetime.now().strftime("%m/%d/%Y %H:%M:%S"), '', '', '', '', '', '', '', '', ''])
+
+def log_interaction(path, interaction_type, reward_given):
     """
     Logs an interaction to the CSV file.
-    
+
+    :param path: The path to the CSV file.
     :param interaction_type: Type of interaction (Lever Press or Nose Poke).
     :param reward_given: Whether a reward was given (Yes or No).
     """
-    # Determine the interaction number by reading the current file
-    try:
-        with open(path, mode='r', newline='') as file:
-            reader = csv.reader(file)
-            interaction_number = sum(1 for row in reader)  # Counts the existing rows for the next interaction number
-    except FileNotFoundError:
-        interaction_number = 1  # File doesn't exist, start from the first interaction
+    with open(path, mode='r', newline='') as file:
+        reader = csv.reader(file)
+        # Skip the header
+        next(reader, None)
+        previous_row = None
+        for row in reader:
+            previous_row = row
 
-    # Data to log
-    data = [interaction_number, time, interaction_type, reward_given]
+    # If it's the first entry after the headers, we initialize the counts
+    if previous_row is None:
+        total_interactions = 1
+        total_time = ''
+        time_between = ''
+        last_interaction_time = datetime.now()
+    else:
+        total_interactions = int(previous_row[2]) + 1
+        last_interaction_time = datetime.strptime(previous_row[5], "%m/%d/%Y %H:%M:%S")
+        time_between = (datetime.now() - last_interaction_time).total_seconds()
+        total_time = previous_row[1]
 
-    # Write data to the CSV file
+    # If it's the last interaction, we update the total time
+    if interaction_type == 'finish':
+        total_time = (datetime.now() - datetime.strptime(previous_row[0], "%m/%d/%Y %H:%M:%S")).total_seconds()
+
+    data = ['', total_time, total_interactions, '', total_interactions, datetime.now().strftime("%m/%d/%Y %H:%M:%S"), interaction_type, reward_given, '', time_between]
+
     with open(path, mode='a', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(data)
