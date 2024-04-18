@@ -420,13 +420,14 @@ def test_io():
 		water()
 	if action == 'light':
 		flashLightStim(strip, Color(255, 255, 255)) #TODO Change to settings
-
 	if action == 'sound':
 		play_sound(speaker_port, 1)
 	if action == 'lever_press':
 		lever_press()
+        #TODO Put log interaction - manual
 	if action == 'nose_poke':
 		nose_poke()
+        #TODO Put log interaction - manual
 
 	return redirect(url_for('io_testing'))
 
@@ -509,7 +510,7 @@ def download_excel_log_file(filename):
         ws = wb.active
         
         # Define your column titles here
-        column_titles = ['Entry', 'Time', 'Type', 'Reward']
+        column_titles = ['Date/Time', 'Total Time', 'Total Interactions', '', 'Entry', 'Time', 'Type', 'Reward', 'Interactions Between', 'Time Between'] 
         ws.append(column_titles)
 
         # Read the CSV file and append rows to the worksheet
