@@ -104,6 +104,7 @@ class TrialStateMachine:
         self.log_path = log_directory
         self.interactions_between = 0
         self.time_between = 0.0
+        self.interactions = []
     def load_settings(self):
         # Implementation of loading settings from file
         try:
@@ -127,7 +128,6 @@ class TrialStateMachine:
                 safe_time_str = time.strftime("%m_%d_%y_%H_%M_%S").replace(":", "_")
                 # Update log_path to include the date and time
                 self.log_path = f"/home/jacob/Downloads/skinner_box-main/logs/log_{safe_time_str}.csv"
-                create_log_file(self.log_path)
                 threading.Thread(target=self.run_trial, args=(goal, duration)).start()
                 self.give_stimulus()
                 return True
@@ -185,11 +185,11 @@ class TrialStateMachine:
                 self.interactable = False  # Disallow further interactions
                 self.currentIteration += 1
                 self.give_reward()
-                log_interaction(self.log_path, "Lever Press", "Yes", self.interactions_between, self.time_between)
+                self.add_interaction("Lever Press", "Yes", self.interactions_between, self.time_between)
                 self.lastSuccessfulInteractTime = time.time()
                 self.interactions_between = 0
                 return
-        log_interaction(self.log_path, "Lever Press", "No")
+        self.add_interaction("Lever Press", "No")
         self.interactions_between += 1
 
     def nose_poke(self):
@@ -200,11 +200,11 @@ class TrialStateMachine:
                 self.interactable = False
                 self.currentIteration += 1
                 self.give_reward()
-                log_interaction(self.log_path, "Nose poke", "Yes", self.interactions_between, self.time_between)
+                self.add_interaction("Nose poke", "Yes", self.interactions_between, self.time_between)
                 self.lastSuccessfulInteractTime = time.time()
                 self.interactions_between = 0
                 return
-        log_interaction(self.log_path, "Nose poke", "No")
+        self.add_interaction("Nose poke", "No")
         self.interactions_between += 1
 
     ## Stimulus' ##
@@ -245,10 +245,33 @@ class TrialStateMachine:
             feed()
         self.queue_stimulus()
 
+    def add_interaction(self, interaction_type, reward_given, interactions_between=0, time_between=''):
+        entry = self.currentIteration
+        interaction_time = time.time() - self.startTime
+        
+        # Log the interaction
+        self.interactions.append([entry, interaction_time, interaction_type, reward_given, interactions_between, time_between])
+
+    def push_log(self, total_time, total_interactions):
+        #TODO create log file
+        with open(self.log_path, 'w', newline='') as file:
+            writer = csv.writer(file)
+            headers = ['Date/Time', 'Total Time', 'Total Interactions', '', 'Entry', 'Interaction Time', 'Type', 'Reward', 'Interactions Between', 'Time Between']
+            writer.writerow(headers)
+            # Write the date and time of the trial under the 'Date/Time' column
+            for interaction in self.interactions:
+                if interaction == self.interactions[0]:
+                    writer.writerow([time.strftime("%m/%d/%Y %H:%M:%S"), total_time, total_interactions, '', interaction[0], interaction[1], interaction[2], interaction[3], interaction[4], interaction[5]])
+
+                writer.writerow(['', '', '', '', interaction[0], interaction[1], interaction[2], interaction[3], interaction[4], interaction[5]])
+
+        pass
+
     def finish_trial(self):
         with self.lock:
             if self.state == 'Running':
                 self.state = 'Completed'
+                self.push_log(self.settings.get('duration') - self.timeRemaining, self.currentIteration)
                 print("Trial complete")
                 return True
             return False
@@ -342,75 +365,6 @@ def load_settings():
 def save_settings(settings):
 	with open(settings_path, 'w') as file:
 		json.dump(settings, file, indent=4)
-
-def create_log_file(path):
-    with open(path, 'w', newline='') as file:
-        writer = csv.writer(file)
-        headers = ['Date/Time', 'Total Time', 'Total Interactions', '', 'Entry', 'Interaction Time', 'Type', 'Reward', 'Interactions Between', 'Time Between']
-        writer.writerow(headers)
-        # Write the date and time of the trial under the 'Date/Time' column
-        writer.writerow([time.strftime("%m/%d/%Y %H:%M:%S"), '', '', '', '', '', '', '', '', ''])
-
-def log_interaction(path, interaction_type, reward_given, interactions_between=0, time_between='', is_start=False, is_finish=False):
-    """
-    Logs an interaction to the CSV file or initializes/finishes a trial.
-
-    :param path: The path to the CSV file.
-    :param interaction_type: Type of interaction (e.g., Lever Press or Nose Poke).
-    :param reward_given: Whether a reward was given (Yes or No).
-    :param interactions_between: Number of interactions between this and the last successful interaction.
-    :param time_between: Time between this and the last successful interaction.
-    :param is_start: True if this is the start of the trial.
-    :param is_finish: True if this is the end of the trial.
-    """
-    try:
-        # Read the last entry to determine the next log's details
-        with open(path, mode='r', newline='') as file:
-            reader = csv.reader(file)
-            last_row = None
-            entry_count = 0
-            for row in reader:
-                last_row = row
-                entry_count += 1
-        
-        # If it's the start of the trial, log the initial time
-        if is_start:
-            start_time = datetime.now()
-            with open(path, mode='a', newline='') as file:
-                writer = csv.writer(file)
-                writer.writerow([start_time.strftime("%m/%d/%Y %H:%M:%S"), '', 1, '', '', '', '', ''])
-            return
-        
-        # Calculate interaction time relative to the start time
-        if last_row:
-            start_time = datetime.strptime(last_row[0], "%m/%d/%Y %H:%M:%S")
-            interaction_time = (datetime.now() - start_time).total_seconds()
-        
-        # Entry count
-        entry = entry_count if last_row else 1
-        
-        # If it's the end of the trial, log the total time
-        if is_finish:
-            total_time = interaction_time
-            interaction_time = ''
-        else:
-            total_time = ''
-        
-        # Prepare the new log entry
-        data = [start_time.strftime("%m/%d/%Y %H:%M:%S"), total_time, entry, interaction_time, interaction_type, reward_given, interactions_between, time_between]
-        
-        # Write the new log entry
-        with open(path, mode='a', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerow(data)
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
-# Example usage:
-# log_interaction('path_to_your_file.csv', 'Nose Poke', 'Yes', interactions_between=3, time_between='5s', is_start=True)
-# log_interaction('path_to_your_file.csv', 'Lever Press', 'No', interactions_between=2, time_between='3s')
-# log_interaction('path_to_your_file.csv', '', '', is_finish=True)
-
 
 def rename_log_files(_log_directory=log_directory):
     # Iterate over all files in the directory
