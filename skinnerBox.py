@@ -21,6 +21,7 @@ import tempfile
 app = Flask(__name__)
 settings_path = 'config.json'
 log_directory = '/home/jacob/Downloads/skinner_box-main/logs/'
+tempfile.tempdir = '/home/jacob/Downloads/skinner_box-main/temp/'
 # LED strip configuration:
 LED_COUNT      = 60      # Number of LED pixels.
 LED_PIN        = 12      # GPIO pin connected to the pixels (must support PWM!).
@@ -38,6 +39,10 @@ try:
 except:
     print("Error starting strip")
     pass
+
+# Ensure log path exists
+if not os.path.exists(log_directory):
+    os.makedirs(log_directory)
 
 def list_log_files(_log_directory=log_directory):
     return [f for f in os.listdir(_log_directory) if os.path.isfile(os.path.join(_log_directory, f))]
@@ -96,7 +101,7 @@ class TrialStateMachine:
         self.lastInteractTime = 0.0
         self.lastStimulusTime = 0.0
         self.stimulusCooldownThread = None
-        self.log_path = '/home/jacob/Downloads/skinner_box-main/logs'
+        self.log_path = log_directory
         self.interactions_between = 0
         self.time_between = 0.0
     def load_settings(self):
@@ -501,6 +506,7 @@ def download_raw_log_file(filename):
         return send_from_directory(directory=log_directory, path=filename, as_attachment=True, download_name=filename)
     except FileNotFoundError:
         return "Log file not found.", 404
+    
 @app.route('/download-excel-log/<filename>')
 def download_excel_log_file(filename):
     secure_filename = safe_join(log_directory, filename)  # Ensure the path is secure
@@ -520,7 +526,7 @@ def download_excel_log_file(filename):
                 ws.append(row)
         
         # Save the workbook to a temporary file
-        temp_file = os.path.join('/home/jacob/Downloads/skinner_box-main/temp/', f'{filename.rsplit(".", 1)[0]}.xlsx')
+        temp_file = os.path.join(tempfile.gettempdir, f'{filename.rsplit(".", 1)[0]}.xlsx')
         wb.save(temp_file)
         
         # Send the Excel file as an attachment
