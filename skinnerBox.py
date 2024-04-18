@@ -127,6 +127,7 @@ class TrialStateMachine:
                 safe_time_str = time.strftime("%m_%d_%y_%H_%M_%S").replace(":", "_")
                 # Update log_path to include the date and time
                 self.log_path = f"/home/jacob/Downloads/skinner_box-main/logs/log_{safe_time_str}.csv"
+                create_log_file(self.log_path)
                 threading.Thread(target=self.run_trial, args=(goal, duration)).start()
                 self.give_stimulus()
                 return True
@@ -184,11 +185,11 @@ class TrialStateMachine:
                 self.interactable = False  # Disallow further interactions
                 self.currentIteration += 1
                 self.give_reward()
-                log_interaction(self.log_path, round((time.time() - self.startTime), 2), "Lever Press", "Yes", self.interactions_between, self.time_between)
+                log_interaction(self.log_path, "Lever Press", "Yes", self.interactions_between, self.time_between)
                 self.lastSuccessfulInteractTime = time.time()
                 self.interactions_between = 0
                 return
-        log_interaction(self.log_path, round((time.time() - self.startTime), 2), "Lever Press", "No")
+        log_interaction(self.log_path, "Lever Press", "No")
         self.interactions_between += 1
 
     def nose_poke(self):
@@ -199,11 +200,11 @@ class TrialStateMachine:
                 self.interactable = False
                 self.currentIteration += 1
                 self.give_reward()
-                log_interaction(self.log_path, round((time.time() - self.startTime), 2), "Nose poke", "Yes", self.interactions_between, self.time_between)
+                log_interaction(self.log_path, "Nose poke", "Yes", self.interactions_between, self.time_between)
                 self.lastSuccessfulInteractTime = time.time()
                 self.interactions_between = 0
                 return
-        log_interaction(self.log_path, round((time.time() - self.startTime), 2), "Nose poke", "No")
+        log_interaction(self.log_path, "Nose poke", "No")
         self.interactions_between += 1
 
     ## Stimulus' ##
@@ -348,7 +349,7 @@ def create_log_file(path):
         headers = ['Date/Time', 'Total Time', 'Total Interactions', '', 'Entry', 'Interaction Time', 'Type', 'Reward', 'Interactions Between', 'Time Between']
         writer.writerow(headers)
         # Write the date and time of the trial under the 'Date/Time' column
-        writer.writerow([datetime.now().strftime("%m/%d/%Y %H:%M:%S"), '', '', '', '', '', '', '', '', ''])
+        writer.writerow([time.strftime("%m/%d/%Y %H:%M:%S"), '', '', '', '', '', '', '', '', ''])
 
 def log_interaction(path, interaction_type, reward_given, interactions_between=0, time_between=''):
     """
