@@ -97,7 +97,7 @@ class TrialStateMachine:
         self.lastStimulusTime = 0.0
         self.stimulusCooldownThread = None
         self.log_path = '/home/jacob/Downloads/skinner_box-main/logs'
-        self.interaction_between = 0
+        self.interactions_between = 0
         self.time_between = 0.0
     def load_settings(self):
         # Implementation of loading settings from file
