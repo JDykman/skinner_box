@@ -97,6 +97,8 @@ class TrialStateMachine:
         self.lastStimulusTime = 0.0
         self.stimulusCooldownThread = None
         self.log_path = '/home/jacob/Downloads/skinner_box-main/logs'
+        self.interaction_between = 0
+        self.time_between = 0.0
     def load_settings(self):
         # Implementation of loading settings from file
         try:
@@ -172,28 +174,35 @@ class TrialStateMachine:
     def lever_press(self):
         if self.state == 'Running':
             if self.interactable:
+                # Get time since last reward interaction
+                self.time_between = (time.time() - self.lastInteractTime)
                 self.interactable = False  # Disallow further interactions
                 self.currentIteration += 1
                 self.give_reward()
-                log_interaction(self.log_path, round((time.time() - self.startTime), 2), "Lever Press", "Yes")
+                log_interaction(self.log_path, round((time.time() - self.startTime), 2), "Lever Press", "Yes", self.interactions_between, self.time_between)
+                self.lastSuccessfulInteractTime = time.time()
+                self.interactions_between = 0
                 return
         log_interaction(self.log_path, round((time.time() - self.startTime), 2), "Lever Press", "No")
-
+        self.interactions_between += 1
 
     def nose_poke(self):
         print("Nose poke")
         if self.state == 'Running':
             if self.interactable == True:
+                self.time_between = (time.time() - self.lastInteractTime)
                 self.interactable = False
                 self.currentIteration += 1
-                self.lastInteractTime = time.time()
                 self.give_reward()
-                log_interaction(self.log_path, round((time.time() - self.startTime), 2), "Nose poke", "Yes")
+                log_interaction(self.log_path, round((time.time() - self.startTime), 2), "Nose poke", "Yes", self.interactions_between, self.time_between)
+                self.lastSuccessfulInteractTime = time.time()
+                self.interactions_between = 0
                 return
         log_interaction(self.log_path, round((time.time() - self.startTime), 2), "Nose poke", "No")
+        self.interactions_between += 1
 
     ## Stimulus' ##
-    def queue_stimulus(self): #give after cooldown
+    def queue_stimulus(self): # Give after cooldown
         if(self.settings.get('stimulusType') == 'light' and self.interactable == False):
             self.stimulusCooldownThread = threading.Timer(float(self.settings.get('cooldown', 0)), self.light_stimulus)
             self.stimulusCooldownThread.start()
@@ -336,13 +345,15 @@ def create_log_file(path):
         # Write the date and time of the trial under the 'Date/Time' column
         writer.writerow([datetime.now().strftime("%m/%d/%Y %H:%M:%S"), '', '', '', '', '', '', '', '', ''])
 
-def log_interaction(path, interaction_type, reward_given):
+def log_interaction(path, interaction_type, reward_given, interactions_between=0, time_between=''):
     """
     Logs an interaction to the CSV file.
 
     :param path: The path to the CSV file.
     :param interaction_type: Type of interaction (Lever Press or Nose Poke).
     :param reward_given: Whether a reward was given (Yes or No).
+    :param interactions_between: Number of interactions between the last two successful interactions.
+    :param time_between: Time between the last two successful interactions.
     """
     with open(path, mode='r', newline='') as file:
         reader = csv.reader(file)
@@ -368,7 +379,7 @@ def log_interaction(path, interaction_type, reward_given):
     if interaction_type == 'finish':
         total_time = (datetime.now() - datetime.strptime(previous_row[0], "%m/%d/%Y %H:%M:%S")).total_seconds()
 
-    data = ['', total_time, total_interactions, '', total_interactions, datetime.now().strftime("%m/%d/%Y %H:%M:%S"), interaction_type, reward_given, '', time_between]
+    data = ['', total_time, total_interactions, '', total_interactions, datetime.now().strftime("%m/%d/%Y %H:%M:%S"), interaction_type, reward_given, interactions_between, time_between]
 
     with open(path, mode='a', newline='') as file:
         writer = csv.writer(file)
