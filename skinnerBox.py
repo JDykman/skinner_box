@@ -351,45 +351,66 @@ def create_log_file(path):
         # Write the date and time of the trial under the 'Date/Time' column
         writer.writerow([time.strftime("%m/%d/%Y %H:%M:%S"), '', '', '', '', '', '', '', '', ''])
 
-def log_interaction(path, interaction_type, reward_given, interactions_between=0, time_between=''):
+def log_interaction(path, interaction_type, reward_given, interactions_between=0, time_between='', is_start=False, is_finish=False):
     """
-    Logs an interaction to the CSV file.
+    Logs an interaction to the CSV file or initializes/finishes a trial.
 
     :param path: The path to the CSV file.
-    :param interaction_type: Type of interaction (Lever Press or Nose Poke).
+    :param interaction_type: Type of interaction (e.g., Lever Press or Nose Poke).
     :param reward_given: Whether a reward was given (Yes or No).
-    :param interactions_between: Number of interactions between the last two successful interactions.
-    :param time_between: Time between the last two successful interactions.
+    :param interactions_between: Number of interactions between this and the last successful interaction.
+    :param time_between: Time between this and the last successful interaction.
+    :param is_start: True if this is the start of the trial.
+    :param is_finish: True if this is the end of the trial.
     """
-    with open(path, mode='r', newline='') as file:
-        reader = csv.reader(file)
-        # Skip the header
-        next(reader, None)
-        previous_row = None
-        for row in reader:
-            previous_row = row
+    try:
+        # Read the last entry to determine the next log's details
+        with open(path, mode='r', newline='') as file:
+            reader = csv.reader(file)
+            last_row = None
+            entry_count = 0
+            for row in reader:
+                last_row = row
+                entry_count += 1
+        
+        # If it's the start of the trial, log the initial time
+        if is_start:
+            start_time = datetime.now()
+            with open(path, mode='a', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerow([start_time.strftime("%m/%d/%Y %H:%M:%S"), '', 1, '', '', '', '', ''])
+            return
+        
+        # Calculate interaction time relative to the start time
+        if last_row:
+            start_time = datetime.strptime(last_row[0], "%m/%d/%Y %H:%M:%S")
+            interaction_time = (datetime.now() - start_time).total_seconds()
+        
+        # Entry count
+        entry = entry_count if last_row else 1
+        
+        # If it's the end of the trial, log the total time
+        if is_finish:
+            total_time = interaction_time
+            interaction_time = ''
+        else:
+            total_time = ''
+        
+        # Prepare the new log entry
+        data = [start_time.strftime("%m/%d/%Y %H:%M:%S"), total_time, entry, interaction_time, interaction_type, reward_given, interactions_between, time_between]
+        
+        # Write the new log entry
+        with open(path, mode='a', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(data)
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
-    # If it's the first entry after the headers, we initialize the counts
-    if previous_row is None:
-        total_interactions = 1
-        total_time = ''
-        time_between = ''
-        last_interaction_time = datetime.now()
-    else:
-        total_interactions = int(previous_row[2]) + 1
-        last_interaction_time = datetime.strptime(previous_row[5], "%m/%d/%Y %H:%M:%S")
-        time_between = (datetime.now() - last_interaction_time).total_seconds()
-        total_time = previous_row[1]
+# Example usage:
+# log_interaction('path_to_your_file.csv', 'Nose Poke', 'Yes', interactions_between=3, time_between='5s', is_start=True)
+# log_interaction('path_to_your_file.csv', 'Lever Press', 'No', interactions_between=2, time_between='3s')
+# log_interaction('path_to_your_file.csv', '', '', is_finish=True)
 
-    # If it's the last interaction, we update the total time
-    if interaction_type == 'finish':
-        total_time = (datetime.now() - datetime.strptime(previous_row[0], "%m/%d/%Y %H:%M:%S")).total_seconds()
-
-    data = ['', total_time, total_interactions, '', total_interactions, datetime.now().strftime("%m/%d/%Y %H:%M:%S"), interaction_type, reward_given, interactions_between, time_between]
-
-    with open(path, mode='a', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(data)
 
 def rename_log_files(_log_directory=log_directory):
     # Iterate over all files in the directory
