@@ -1,27 +1,21 @@
 #!/usr/bin/env python3
 
-import datetime
 from signal import pause
 from openpyxl import Workbook
-import pygame
 from flask import Flask, Response, render_template, request, jsonify,  send_file, send_from_directory, url_for, redirect
 from gpiozero import LED, Button, OutputDevice
-import RPi.GPIO as GPIO
 import json
 import time
 import threading
-from picamera2 import Picamera2, Preview
 from rpi_ws281x import Adafruit_NeoPixel, Color
 import csv
 import os
 from werkzeug.utils import secure_filename, safe_join
-import pandas as pd
-import tempfile
 
 app = Flask(__name__)
 settings_path = 'config.json'
 log_directory = '/home/jacob/Downloads/skinner_box-main/logs/'
-tempfile.tempdir = '/home/jacob/Downloads/skinner_box-main/temp/'
+temp_directory = '/home/jacob/Downloads/skinner_box-main/temp/'
 # LED strip configuration:
 LED_COUNT      = 60      # Number of LED pixels.
 LED_PIN        = 12      # GPIO pin connected to the pixels (must support PWM!).
@@ -507,6 +501,8 @@ def download_excel_log_file(filename):
         # Initialize a workbook and select the active worksheet
         wb = Workbook()
         ws = wb.active
+        if not os.path.exists(temp_directory):
+            os.makedirs(temp_directory)
         
         # Define your column titles here
         column_titles = ['Date/Time', 'Total Time', 'Total Interactions', '', 'Entry', 'Interaction Time', 'Type', 'Reward', 'Interactions Between', 'Time Between']
@@ -524,7 +520,7 @@ def download_excel_log_file(filename):
         
         # Save the workbook to a temporary file
         temp_filename = f'{filename.rsplit(".", 1)[0]}.xlsx'
-        temp_filepath = os.path.join(tempfile.gettempdir(), temp_filename)
+        temp_filepath = os.path.join(temp_directory, temp_filename)
         wb.save(temp_filepath)
         
         # Send the Excel file as an attachment
