@@ -501,30 +501,35 @@ def download_raw_log_file(filename):
     
 @app.route('/download-excel-log/<filename>')
 def download_excel_log_file(filename):
-    secure_filename = safe_join(log_directory, filename)  # Ensure the path is secure
+    # Use safe_join to ensure the filename is secure
+    secure_filename = safe_join(log_directory, filename)
     try:
         # Initialize a workbook and select the active worksheet
         wb = Workbook()
         ws = wb.active
         
         # Define your column titles here
-        column_titles = ['Date/Time', 'Total Time', 'Total Interactions', '', 'Entry', 'Time', 'Type', 'Reward', 'Interactions Between', 'Time Between'] 
+        column_titles = ['Date/Time', 'Total Time', 'Total Interactions', '', 'Entry', 'Interaction Time', 'Type', 'Reward', 'Interactions Between', 'Time Between']
         ws.append(column_titles)
 
         # Read the CSV file and append rows to the worksheet
         with open(secure_filename, mode='r', newline='') as file:
             reader = csv.reader(file)
+            next(reader, None)  # Skip the header of the CSV if it's already included
             for row in reader:
                 ws.append(row)
         
         # Save the workbook to a temporary file
-        temp_file = os.path.join(tempfile.gettempdir, f'{filename.rsplit(".", 1)[0]}.xlsx')
-        wb.save(temp_file)
+        temp_filename = f'{filename.rsplit(".", 1)[0]}.xlsx'
+        temp_filepath = os.path.join(tempfile.gettempdir(), temp_filename)
+        wb.save(temp_filepath)
         
         # Send the Excel file as an attachment
-        return send_file(temp_file, as_attachment=True, download_name=f'{filename.rsplit(".", 1)[0]}.xlsx', mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        return send_file(temp_filepath, as_attachment=True, download_name=temp_filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     except FileNotFoundError:
         return "Log file not found.", 404
+    except Exception as e:
+        return f"An error occurred: {e}", 500
     
 @app.route('/view-log/<filename>')
 def view_log(filename):
