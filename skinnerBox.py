@@ -183,42 +183,46 @@ class TrialStateMachine:
             
     ## Interactions ##
     def lever_press(self):
-        self.total_interactions += 1
         current_time = time.time()
-        if self.state == 'Running':
-            if self.interactable:
-                if self.lastSuccessfulInteractTime is not None:
-                    self.time_between = current_time - self.lastSuccessfulInteractTime
-                else:
-                    self.time_between = 0
-                self.interactable = False  # Disallow further interactions
-                self.currentIteration += 1
-                self.give_reward()
-                self.add_interaction("Lever Press", "Yes", self.interactions_between, self.time_between)
-                self.lastSuccessfulInteractTime = current_time
-                self.interactions_between = 0
-                return
-        self.add_interaction("Lever Press", "No")
-        self.interactions_between += 1
+        self.total_interactions += 1
+
+        if self.state == 'Running' and self.interactable:
+            # Calculate time between only if the last interaction was when interactable was True
+            if self.lastSuccessfulInteractTime is not None:
+                self.time_between = (current_time - self.lastSuccessfulInteractTime).__round__(2)
+            else:
+                self.time_between = 0  # Default for the first successful interaction
+
+            self.interactable = False  # Disallow further interactions until reset
+            self.currentIteration += 1
+            self.give_reward()
+            self.add_interaction("Lever Press", "Yes", self.interactions_between, self.time_between)
+            self.lastSuccessfulInteractTime = current_time  # Update only on successful interaction when interactable
+            self.interactions_between = 0
+        else:
+            self.add_interaction("Lever Press", "No", self.interactions_between, 0)
+            self.interactions_between += 1
 
     def nose_poke(self):
-        self.total_interactions += 1
         current_time = time.time()
-        if self.state == 'Running':
-            if self.interactable == True:
-                if self.lastSuccessfulInteractTime is not None:
-                    self.time_between = current_time - self.lastSuccessfulInteractTime
-                else:
-                    self.time_between = 0                
-                self.interactable = False
-                self.currentIteration += 1
-                self.give_reward()
-                self.add_interaction("Nose poke", "Yes", self.interactions_between, self.time_between)
-                self.lastSuccessfulInteractTime = current_time
-                self.interactions_between = 0
-                return
-        self.add_interaction("Nose poke", "No")
-        self.interactions_between += 1
+        self.total_interactions += 1
+
+        if self.state == 'Running' and self.interactable:
+            if self.lastSuccessfulInteractTime is not None:
+                self.time_between = (current_time - self.lastSuccessfulInteractTime).__round__(2)
+            else:
+                self.time_between = 0  # Default for the first successful interaction
+
+            self.interactable = False
+            self.currentIteration += 1
+            self.give_reward()
+            self.add_interaction("Nose poke", "Yes", self.interactions_between, self.time_between)
+            self.lastSuccessfulInteractTime = current_time  # Update only on successful interaction when interactable
+            self.interactions_between = 0
+        else:
+            self.add_interaction("Nose poke", "No", self.interactions_between, 0)
+            self.interactions_between += 1
+
 
     ## Stimulus' ##
     def queue_stimulus(self): # Give after cooldown
