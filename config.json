@@ -1,7 +1,7 @@
 {
-    "duration": "10",
-    "goal": "12",
-    "cooldown": "10",
+    "duration": "5",
+    "goal": "5",
+    "cooldown": "2",
     "rewardType": "water",
     "stimulusType": "light",
     "interactionType": "lever",

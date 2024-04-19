@@ -98,12 +98,14 @@ class TrialStateMachine:
         self.settings = {}
         self.startTime = None
         self.interactable = True
-        self.lastInteractTime = 0.0
+        self.lastSuccessfulInteractTime = 0.0
         self.lastStimulusTime = 0.0
         self.stimulusCooldownThread = None
         self.log_path = log_directory
         self.interactions_between = 0
         self.time_between = 0.0
+        self.total_interactions = 0
+        self.total_time = 0
         self.interactions = []
     def load_settings(self):
         # Implementation of loading settings from file
@@ -172,36 +174,47 @@ class TrialStateMachine:
 
             #Finish trial
             if self.currentIteration >= goal or self.timeRemaining <= 0:
-                self.finish_trial()
-                break
+                self.total_time = (time.time() - self.startTime).__round__(2)
+                if self.interactable: #This is here to make sure it records the last interaction
+                    #TODO Find a better way to do this ^^
+                    self.finish_trial()
+                    break
             time.sleep(.10)
             
     ## Interactions ##
     def lever_press(self):
+        self.total_interactions += 1
+        current_time = time.time()
         if self.state == 'Running':
             if self.interactable:
-                # Get time since last reward interaction
-                self.time_between = (time.time() - self.lastInteractTime)
+                if self.lastSuccessfulInteractTime is not None:
+                    self.time_between = current_time - self.lastSuccessfulInteractTime
+                else:
+                    self.time_between = 0
                 self.interactable = False  # Disallow further interactions
                 self.currentIteration += 1
                 self.give_reward()
                 self.add_interaction("Lever Press", "Yes", self.interactions_between, self.time_between)
-                self.lastSuccessfulInteractTime = time.time()
+                self.lastSuccessfulInteractTime = current_time
                 self.interactions_between = 0
                 return
         self.add_interaction("Lever Press", "No")
         self.interactions_between += 1
 
     def nose_poke(self):
-        print("Nose poke")
+        self.total_interactions += 1
+        current_time = time.time()
         if self.state == 'Running':
             if self.interactable == True:
-                self.time_between = (time.time() - self.lastInteractTime)
+                if self.lastSuccessfulInteractTime is not None:
+                    self.time_between = current_time - self.lastSuccessfulInteractTime
+                else:
+                    self.time_between = 0                
                 self.interactable = False
                 self.currentIteration += 1
                 self.give_reward()
                 self.add_interaction("Nose poke", "Yes", self.interactions_between, self.time_between)
-                self.lastSuccessfulInteractTime = time.time()
+                self.lastSuccessfulInteractTime = current_time
                 self.interactions_between = 0
                 return
         self.add_interaction("Nose poke", "No")
@@ -245,14 +258,15 @@ class TrialStateMachine:
             feed()
         self.queue_stimulus()
 
+    ## Logging ##
     def add_interaction(self, interaction_type, reward_given, interactions_between=0, time_between=''):
-        entry = self.currentIteration
+        entry = self.total_interactions
         interaction_time = time.time() - self.startTime
         
         # Log the interaction
         self.interactions.append([entry, interaction_time, interaction_type, reward_given, interactions_between, time_between])
 
-    def push_log(self, total_time, total_interactions):
+    def push_log(self):
         #TODO create log file
         with open(self.log_path, 'w', newline='') as file:
             writer = csv.writer(file)
@@ -261,17 +275,15 @@ class TrialStateMachine:
             # Write the date and time of the trial under the 'Date/Time' column
             for interaction in self.interactions:
                 if interaction == self.interactions[0]:
-                    writer.writerow([time.strftime("%m/%d/%Y %H:%M:%S"), total_time, total_interactions, '', interaction[0], interaction[1], interaction[2], interaction[3], interaction[4], interaction[5]])
-
-                writer.writerow(['', '', '', '', interaction[0], interaction[1], interaction[2], interaction[3], interaction[4], interaction[5]])
-
-        pass
+                    writer.writerow([time.strftime("%m/%d/%Y %H:%M:%S"), self.total_time, self.total_interactions, '', interaction[0], interaction[1], interaction[2], interaction[3], interaction[4], interaction[5]])
+                else:
+                    writer.writerow(['', '', '', '', interaction[0], interaction[1], interaction[2], interaction[3], interaction[4], interaction[5]])
 
     def finish_trial(self):
         with self.lock:
             if self.state == 'Running':
                 self.state = 'Completed'
-                self.push_log(self.settings.get('duration') - self.timeRemaining, self.currentIteration)
+                self.push_log()
                 print("Trial complete")
                 return True
             return False
