@@ -98,7 +98,7 @@ class TrialStateMachine:
         self.settings = {}
         self.startTime = None
         self.interactable = True
-        self.lastSuccessfulInteractTime = 0.0
+        self.lastSuccessfulInteractTime = None
         self.lastStimulusTime = 0.0
         self.stimulusCooldownThread = None
         self.log_path = log_directory
@@ -265,7 +265,7 @@ class TrialStateMachine:
     ## Logging ##
     def add_interaction(self, interaction_type, reward_given, interactions_between=0, time_between=''):
         entry = self.total_interactions
-        interaction_time = time.time() - self.startTime
+        interaction_time = (time.time() - self.startTime).__round__(2)
         
         # Log the interaction
         self.interactions.append([entry, interaction_time, interaction_type, reward_given, interactions_between, time_between])
