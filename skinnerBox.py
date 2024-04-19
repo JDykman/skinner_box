@@ -511,7 +511,10 @@ def download_excel_log_file(filename):
         # Define your column titles here
         column_titles = ['Date/Time', 'Total Time', 'Total Interactions', '', 'Entry', 'Interaction Time', 'Type', 'Reward', 'Interactions Between', 'Time Between']
         ws.append(column_titles)
-
+        # Check if the file exists and is a CSV file
+        if not os.path.isfile(secure_filename) or not filename.endswith('.csv'):
+            print(f'CSV file not found or incorrect file type: {secure_filename}')
+            return "Log file not found.", 404
         # Read the CSV file and append rows to the worksheet
         with open(secure_filename, mode='r', newline='') as file:
             reader = csv.reader(file)
@@ -527,9 +530,11 @@ def download_excel_log_file(filename):
         # Send the Excel file as an attachment
         return send_file(temp_filepath, as_attachment=True, download_name=temp_filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     except FileNotFoundError:
-        return "Log file not found.", 404
+        print(f'Excel file not found: {temp_filename}')
+        return "Converted log file not found.", 404
     except Exception as e:
-        return f"An error occurred: {e}", 500
+        print(f"An error occurred: {e}")
+        return "An error occurred while processing the request.", 500
     
 @app.route('/view-log/<filename>')
 def view_log(filename):
