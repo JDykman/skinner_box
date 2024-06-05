@@ -1,3 +1,5 @@
+This code is an alpha version and will not be used in the final project.
+
 For First Time Setup:
 
 1. Download and unzip the file on rasperry pi
