@@ -14,6 +14,7 @@ temp/
 __pycache__/
 *.pyc
 .lgd-nfy0
+.env
 
 # Visual Studio Code
 .vscode/
