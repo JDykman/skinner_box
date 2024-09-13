@@ -1,5 +1,5 @@
 This code is a beta version of the code running on a skinnerbox.
-Credit: https://github.com/JDykman/skinner_box.git
+Main Trunk: https://github.com/JDykman/skinner_box.git
 
 For First Time Setup:
 
