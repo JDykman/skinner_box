@@ -1,4 +1,6 @@
-This code is an alpha version and will not be used in the final project.
+This code is a beta version of the code running on a skinnerbox.
+
+Main Trunk: https://github.com/JDykman/skinner_box.git
 
 For First Time Setup:
 
