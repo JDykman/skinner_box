@@ -275,18 +275,18 @@ def start():
         return render_template('trialpage.html', settings=settings)
 
 @app.route('/stop', methods=['POST'])
-def stop():
+def stop(): # Stops the trial
     if trial_state_machine.stop_trial():
         return redirect(url_for('trial_settings'))
     return redirect(url_for('trial_settings'))
 
 @app.route('/trial-settings', methods=['GET'])
-def trial_settings():
+def trial_settings(): # Displays the trial settings with the settings loaded from the file
     settings = load_settings()
     return render_template('trialpage.html', settings=settings)
 
 @app.route('/update-trial-settings', methods=['POST'])
-def update_trial_settings():
+def update_trial_settings(): # Updates the trial settings with the form data
     settings = load_settings()
     for key in request.form:
         settings[key] = request.form[key]
@@ -294,10 +294,10 @@ def update_trial_settings():
     return redirect(url_for('trial_settings'))
 
 @app.route('/trial-status')
-def trial_status():
+def trial_status(): # Returns the current status of the trial
     global trial_state_machine
     try:
-        # This should return the real-time values of countdown and current iteration
+        # This returns the real-time values of countdown and current iteration
         trial_status = {
             'timeRemaining': trial_state_machine.timeRemaining,
             'currentIteration': trial_state_machine.currentIteration
@@ -307,12 +307,12 @@ def trial_status():
         return
     
 @app.route('/log-viewer', methods=['GET', 'POST'])
-def log_viewer():
+def log_viewer(): # Displays the log files in the log directory
     log_files = list_log_files()  # Assume this function returns the list of log file names.
     return render_template('logpage.html', log_files=log_files)
 
 @app.route('/download-raw-log/<filename>')
-def download_raw_log_file(filename):
+def download_raw_log_file(filename): # Download the raw log file
     filename = secure_filename(filename)  # Sanitize the filename
     try:
         return send_from_directory(directory=log_directory, path=filename, as_attachment=True, download_name=filename)
@@ -320,7 +320,7 @@ def download_raw_log_file(filename):
         return "Log file not found.", 404
     
 @app.route('/download-excel-log/<filename>')
-def download_excel_log_file(filename):
+def download_excel_log_file(filename): # Download the Excel log file
     # Use safe_join to ensure the filename is secure
     secure_filename = safe_join(log_directory, filename)
     try:
@@ -359,7 +359,7 @@ def download_excel_log_file(filename):
         return "An error occurred while processing the request.", 500
     
 @app.route('/view-log/<filename>')
-def view_log(filename):
+def view_log(filename): # View the log file in the browser
     filename = secure_filename(filename)
     file_path = os.path.join(log_directory, filename)
 
@@ -380,6 +380,46 @@ def view_log(filename):
 #endregion
 
 class TrialStateMachine:
+    """
+    A state machine to manage the trial process in a behavioral experiment.
+    Attributes:
+        state (str): The current state of the trial.
+        lock (threading.Lock): A lock to ensure thread safety.
+        currentIteration (int): The current iteration of the trial.
+        settings (dict): The settings loaded from a configuration file.
+        startTime (float): The start time of the trial.
+        interactable (bool): Whether the system is currently interactable.
+        lastSuccessfulInteractTime (float): The time of the last successful interaction.
+        lastStimulusTime (float): The time of the last stimulus.
+        stimulusCooldownThread (threading.Timer): The thread handling stimulus cooldown.
+        log_path (str): The path to the log file.
+        interactions_between (int): The number of interactions between successful interactions.
+        time_between (float): The time between successful interactions.
+        total_interactions (int): The total number of interactions.
+        total_time (float): The total time of the trial.
+        interactions (list): A list of interactions during the trial.
+    Methods:
+        load_settings(): Loads settings from a configuration file.
+        start_trial(): Starts the trial.
+        pause_trial(): Pauses the trial.
+        resume_trial(): Resumes the trial.
+        stop_trial(): Stops the trial.
+        run_trial(goal, duration): Runs the trial logic.
+        lever_press(): Handles a lever press interaction.
+        nose_poke(): Handles a nose poke interaction.
+        queue_stimulus(): Queues a stimulus after a cooldown period.
+        give_stimulus(): Gives a stimulus immediately.
+        light_stimulus(): Handles the light stimulus.
+        noise_stimulus(): Handles the noise stimulus.
+        give_reward(): Gives a reward based on the settings.
+        add_interaction(interaction_type, reward_given, interactions_between=0, time_between=''): Logs an interaction.
+        push_log(): Writes the log to a file.
+        finish_trial(): Finishes the trial and logs the results.
+        error(): Handles errors and sets the state to 'Error'.
+        pause_trial_logic(): Logic to pause the trial.
+        resume_trial_logic(): Logic to resume the trial.
+        handle_error(): Logic to handle errors.
+    """
     def __init__(self):
         self.state = 'Idle'
         self.lock = threading.Lock()
@@ -601,12 +641,12 @@ class TrialStateMachine:
 # Run the app
 if __name__ == '__main__':
     # Create a state machine
-    trial_state_machine = TrialStateMachine()
-    water_primer.when_pressed = start_motor
-    start_trial_button.when_pressed = trial_state_machine.start_trial
-    manual_interaction.when_pressed = water
+    trial_state_machine = TrialStateMachine() # Create an instance of the TrialStateMachine class
+    water_primer.when_pressed = start_motor # Start the motor when the water primer is pressed
+    start_trial_button.when_pressed = trial_state_machine.start_trial # Start the trial when the start button is pressed
+    manual_interaction.when_pressed = water # Water when the manual interaction button is pressed
 
     # Call the function to ensure naming is correct
-    rename_log_files()
+    rename_log_files() # Rename log files with spaces and colons to underscores. Probably not needed in production, mostly used in testing.
     # Start the Flask app
     app.run(debug=False, use_reloader=False, host='0.0.0.0')
