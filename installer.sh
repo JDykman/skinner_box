@@ -13,7 +13,7 @@ ensure_package_installed() {
 }
 
 #List of required packages
-required_packages=("flask" "rpi_ws281x" "gpiozero" "pandas openpyxl" "pandas")
+required_packages=("flask" "rpi_ws281x" "gpiozero" "pandas" "psycopg2" "werkzeug" "flask_sqlalchemy")
 
 for package in "${required_packages[@]}"; do
 	ensure_package_installed $package

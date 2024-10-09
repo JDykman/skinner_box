@@ -1,59 +1,10 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends 'base.html' %}
 <title>Log Viewer</title>
-<style>
-    #container {
-        display: flex;
-    }
-    #log-list {
-        width: 30%;
-        background-color: #eef;
-        padding: 10px;
-        height: 500px;
-        overflow-y: scroll; /* changed from auto to ensure consistency */
-    }
-    #log-viewer {
-        width: 70%;
-        background-color: #dde;
-        padding: 10px;
-        height: 500px;
-        overflow-y: scroll; /* changed from auto to ensure consistency */
-    }
-    #log-list a {
-        display: block;
-        margin-bottom: 5px;
-        cursor: pointer;
-        text-decoration: none; /* added for better visual clarity */
-        color: #000; /* added to ensure text is clearly visible */
-    }
-    #download-btn {
-        display: none;
-        margin-top: 10px;
-        padding: 8px 15px; /* added for better visibility and usability */
-        background-color: #4CAF50; /* added for better visibility */
-        color: white; /* added for better visibility */
-        text-decoration: none; /* added for visual clarity */
-        border-radius: 5px; /* added for visual appeal */
-    }
-    #download-btn:hover {
-        background-color: #45a049; /* added for interactive feedback */
-    }
-    #download-excel-btn {
-        display: none; /* Initially hidden */
-        margin-top: 10px;
-        padding: 8px 15px;
-        background-color: #008CBA; /* Different color for distinction */
-        color: white;
-        text-decoration: none;
-        border-radius: 5px;
-    }
-    #download-excel-btn:hover {
-        background-color: #007BA7;
-    }
-</style>
+{% block head %}
+{% endblock %}
+
+{% block body %}
+
 <script>
     function viewLog(filename) {
         // Fetch log content and display in the log viewer
@@ -98,3 +49,4 @@
     <a id="download-excel-btn" href="" download>Download Excel Log</a>
     </body>
 </html>
+{% endblock %}

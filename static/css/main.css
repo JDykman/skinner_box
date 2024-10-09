@@ -92,4 +92,59 @@ body {
         bottom: 0;
         width: 100%;
     }
-    
+    #container {
+        display: flex;
+    }
+    #log-list {
+        width: 30%;
+        background-color: #1E1E1E;
+        padding: 10px;
+        height: 500px;
+        overflow-y: scroll; /* changed from auto to ensure consistency */
+    }
+    #log-viewer {
+        width: 70%;
+        background-color: #1E1E1E;
+        padding: 10px;
+        height: 500px;
+        overflow-y: scroll; /* changed from auto to ensure consistency */
+    }
+    #log-list a {
+        display: block;
+        margin-bottom: 5px;
+        cursor: pointer;
+        text-decoration: none; /* added for better visual clarity */
+        color: #000; /* added to ensure text is clearly visible */
+    }
+    #log-list a:hover {
+        background-color: #BB86FC; /* added for interactive feedback */
+        color: #FFFFFF; /* added for better visibility */
+    }
+    /* Scroll bar styling */
+    ::-webkit-scrollbar {
+        width: 10px;
+    }
+    #download-btn {
+        display: none;
+        margin-top: 10px;
+        padding: 8px 15px; /* added for better visibility and usability */
+        background-color: #4CAF50; /* added for better visibility */
+        color: white; /* added for better visibility */
+        text-decoration: none; /* added for visual clarity */
+        border-radius: 5px; /* added for visual appeal */
+    }
+    #download-btn:hover {
+        background-color: #45a049; /* added for interactive feedback */
+    }
+    #download-excel-btn {
+        display: none; /* Initially hidden */
+        margin-top: 10px;
+        padding: 8px 15px;
+        background-color: #008CBA; /* Different color for distinction */
+        color: white;
+        text-decoration: none;
+        border-radius: 5px;
+    }
+    #download-excel-btn:hover {
+        background-color: #007BA7;
+    }
