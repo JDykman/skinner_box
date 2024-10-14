@@ -5,7 +5,7 @@ import json
 import os
 import time
 from app import gpio
-from app.config import log_directory
+from app.config import log_directory, settings_path
 
 class TrialStateMachine:
     """
@@ -67,7 +67,7 @@ class TrialStateMachine:
     def load_settings(self):
         # Implementation of loading settings from file
         try:
-            with open('config.json', 'r') as file:
+            with open(settings_path, 'r') as file:
                 self.settings = json.load(file)
         except FileNotFoundError:
             self.settings = {}
@@ -86,7 +86,7 @@ class TrialStateMachine:
                 # YYYY_MM_DD_HH_MM_SS
                 safe_time_str = time.strftime("%m_%d_%y_%H_%M_%S").replace(":", "_")
                 # Update log_path to include the date and time
-                self.log_path = f"/home/jacob/Downloads/skinner_box-main/logs/log_{safe_time_str}.csv"
+                self.log_path = log_directory + f"trial_log_{safe_time_str}.csv"
                 threading.Thread(target=self.run_trial, args=(goal, duration)).start()
                 self.give_stimulus()
                 return True

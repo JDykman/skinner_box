@@ -1,0 +1,9 @@
+{
+    "duration": "2",
+    "goal": "2",
+    "cooldown": "1",
+    "rewardType": "water",
+    "interactionType": "lever",
+    "stimulusType": "light",
+    "light-color": "#e53434"
+}

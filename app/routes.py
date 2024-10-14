@@ -57,25 +57,26 @@ def io_testing():
 
 @app.route('/test_io', methods=['POST'])
 def test_io():
-	action = request.form.get('action')
-	print(f"Button clicked: {action}")
-	#TODO Add code to handle each action.
-	if action == 'feed':
-		gpio.feed()
-	if action == 'water':
-		gpio.water()
-	if action == 'light':
-		gpio.flashLightStim((255, 255, 255)) #TODO Change to settings color
-	if action == 'sound':
-		gpio.play_sound(1)
-	if action == 'lever_press':
-		gpio.lever_press()
+    action = request.form.get('action')
+    print(f"Button clicked: {action}")
+    #TODO Add code to handle each action.
+    if action == 'feed':
+        gpio.feed()
+    if action == 'water':
+        gpio.water()
+    if action == 'light':
+        gpio.flashLightStim((255, 255, 255)) #TODO Change to settings color
+    if action == 'sound':
+        gpio.play_sound(1)
+    if action == 'lever_press':
+        if trial_state_machine != None: gpio.lever_press(trial_state_machine)
         #TODO Put log interaction - manual
-	if action == 'nose_poke':
-		gpio.nose_poke()
+    if action == 'nose_poke':
+        gpio.nose_poke()
+    if action == 'nose_poke':
+        if trial_state_machine != None: gpio.nose_poke(trial_state_machine)
         #TODO Put log interaction - manual
-
-	return redirect(url_for('io_testing'))
+    return redirect(url_for('io_testing'))
 
 @app.route('/trial', methods=['POST'])
 def trial():
