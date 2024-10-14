@@ -1,11 +1,113 @@
-{% extends 'base.html' %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>I/O Testing Page</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: space-between;
+            padding: 20px;
+        }
+        #left-section, #right-section {
+            width: 45%;
+            padding: 10px;
+        }
+        #right-section {
+            border-left: 1px solid #ccc;
+            padding-left: 30px;
+        }
+        .status {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .status-text {
+            margin-right: 20px;
+            font-size: 20px;
+        }
+        .status-indicator {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: grey;
+        }
+        .on {
+            background-color: red;
+        }
+        .off {
+            background-color: grey;
+        }
+        /* Banner styling for mock mode */
+        .mock-banner {
+            background-color: yellow;
+            color: black;
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
 
-{% block head %}
-<title>I/O Testing</title>
-{% endblock %}
+    <div id="left-section">
+        <h2>GPIO Monitor</h2>
+    
+        <!-- Show the mock banner if IS_PI is false -->
+        {% if not is_pi %}
+            <div class="mock-banner">
+                Warning: You are in MOCK MODE! GPIO is not physically available.
+            </div>
+        {% endif %}
+    
+        <div id="status-container">
+            <div class="status">
+                <span class="status-text">LED's</span>
+                <div class="status-indicator" id="LED"></div>
+            </div>
+            <div class="status">
+                <span class="status-text">Lever</span>
+                <div class="status-indicator" id="Lever"></div>
+            </div>
+            <div class="status">
+                <span class="status-text">Water Pump</span>
+                <div class="status-indicator" id="WaterPump"></div>
+            </div>
+            <div class="status">
+                <span class="status-text">Feeder</span>
+                <div class="status-indicator" id="Feeder"></div>
+            </div>
+            <div class="status">
+                <span class="status-text">Buzzer</span>
+                <div class="status-indicator" id="Buzzer"></div>
+            </div>
+            <div class="status">
+                <span class="status-text">Nose Poke</span>
+                <div class="status-indicator" id="NosePoke"></div>
+            </div>
+        </div>
+    
+        <script>
+            function updateStatus() {
+                fetch('/pin_status')
+                    .then(response => response.json())
+                    .then(data => {
+                        for (const [key, value] of Object.entries(data)) {
+                            const indicator = document.getElementById(key.replace(' ', ''));
+                            indicator.className = value === true ? 'status-indicator on' : 'status-indicator off';
+                        }
+                    });
+            }
+    
+            setInterval(updateStatus, 1000); // Update every second
+        </script>
+    </div>
+    
 
-{% block body %}
-<h1>I/O Testing Page</h1>
+<!-- Right section: I/O Testing Form -->
+<div id="right-section">
+    <h1>I/O Testing Page</h1>
     <form action="/test_io" method="post">
         
         <h3>Test Stimulus</h3>
@@ -22,5 +124,7 @@
         <button type="submit" name="action" value="feed">Feed</button>
         <button type="submit" name="action" value="water">Water</button>
     </form> 
-{% endblock %}
+</div>
 
+</body>
+</html>

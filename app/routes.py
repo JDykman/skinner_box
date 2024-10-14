@@ -8,6 +8,7 @@ from app.trial_state_machine import TrialStateMachine
 from skinnerBox import list_log_files, load_settings, save_settings
 from werkzeug.utils import secure_filename, safe_join
 from openpyxl import Workbook
+from app import gpio
 
 settings_path = config.settings_path
 log_directory = config.log_directory
@@ -76,6 +77,20 @@ def test_io():
         #TODO Put log interaction - manual
 
 	return redirect(url_for('io_testing'))
+
+@app.route("/pin_status")
+def pin_status():
+    # Collect the statuses of your GPIO components
+    statuses = {
+        "LEDs": gpio.strip.is_active() if gpio.strip else False,
+        "Lever": gpio.lever.status if gpio.lever else False,
+        "Water Pump": gpio.water_motor.status if gpio.water_motor else False,
+        "Feeder": gpio.feeder_motor.status if gpio.feeder_motor else False,
+        "Buzzer": gpio.buzzer.status if gpio.buzzer else False,
+        "Nose Poke": gpio.poke.status if gpio.poke else False,
+    }
+    # Return the statuses as a JSON response
+    return jsonify(statuses)
 
 @app.route('/trial', methods=['POST'])
 def trial():
